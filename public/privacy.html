@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111210">
+  <meta name="description" content="Read the UNKNOWN privacy policy and understand what information is handled when you use the service.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>Privacy Policy | UNKNOWN</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#111210;color:#f2f0e9;font:16px/1.75 Arial,Helvetica,sans-serif}a{color:#d7a66a}header,main,footer{width:min(820px,calc(100% - 40px));margin:auto}header{padding:28px 0;border-bottom:1px solid #34352f}header a{color:#f2f0e9;text-decoration:none;font-weight:700;letter-spacing:.08em}main{padding:56px 0 80px}h1,h2{line-height:1.2;letter-spacing:-.03em}h1{font-size:clamp(36px,7vw,54px);margin:0 0 12px}h2{font-size:21px;margin:34px 0 10px}p,li{color:#c6c5bb}.meta{color:#a6a69b;font-size:13px}strong{color:#f2f0e9}footer{padding:22px 0 35px;border-top:1px solid #34352f;font-size:13px;color:#a6a69b}nav{display:flex;gap:20px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<header><a href="/">UNKNOWN</a></header>
+<main>
+  <p class="meta">Last updated: 4 November 2026 · Draft for review before public launch</p>
+  <h1>Privacy Policy</h1>
+  <p>This policy explains how UNKNOWN handles information when you use its anonymous, text-based conversation service. UNKNOWN is designed not to require a public profile, email address, phone number or real name. Anonymous use does not mean that no technical data is processed.</p>
+  <h2>1. Who operates UNKNOWN</h2>
+  <p><strong>Launch requirement:</strong> The legal name and address of the service operator, and a working privacy contact email, must be published here before public launch. The operator must replace this paragraph with verified details. Do not rely on an anonymous brand name as the legal identity of the data controller.</p>
+  <h2>2. Information the service handles</h2>
+  <ul>
+    <li><strong>Guest session:</strong> A random session identifier, generated nickname, session status, creation and expiry timestamps, and the fact that you checked the 18+ confirmation. The session cookie contains a random token; the database stores its hash rather than the raw token.</li>
+    <li><strong>Conversation preferences:</strong> Matching mode, selected interests and language are sent to the matching service while you seek a conversation.</li>
+    <li><strong>Messages:</strong> Text is relayed between the two connected guests. The current chat implementation does not save message transcripts to the application database. Messages may exist temporarily in service memory while being delivered.</li>
+    <li><strong>Reports:</strong> If you report a conversation, the service stores the report reason, temporary session references, status and timestamps. It does not attach the chat transcript.</li>
+    <li><strong>Blocks:</strong> If you block someone, temporary session references and timestamps are stored to prevent those two guest sessions from being matched again during the block period.</li>
+    <li><strong>Security and operations:</strong> The hosting and network provider may process connection data such as IP address, request metadata and diagnostic logs. The application hashes the connecting IP before using it as a session-creation rate-limit key.</li>
+  </ul>
+  <h2>3. Cookies and session duration</h2>
+  <p>UNKNOWN uses a first-party, HttpOnly, Secure (on HTTPS), SameSite=Strict guest-session cookie. The cookie is configured to expire after four hours. A guest session is also time-limited. Closing a tab does not necessarily revoke the session immediately; it expires automatically. You can leave a conversation using the in-product controls.</p>
+  <h2>4. Why information is used</h2>
+  <ul>
+    <li>To create temporary guest sessions and connect compatible guests.</li>
+    <li>To deliver messages and operate chat controls.</li>
+    <li>To receive reports, apply session-level blocks and maintain moderation records.</li>
+    <li>To limit automated or abusive session creation and protect service availability.</li>
+    <li>To maintain, secure and troubleshoot the service.</li>
+  </ul>
+  <h2>5. Retention</h2>
+  <p>Guest sessions are configured for a four-hour lifetime. Report records are configured to expire after 90 days. Session-level block records are configured to expire after 180 days. A daily scheduled cleanup removes expired reports, blocks and expired or revoked guest sessions. Moderation audit records currently have no automatic expiry configured. Infrastructure-provider logs may follow that provider's separate retention schedule. These periods may change if the service is updated; this policy must be reviewed whenever data handling changes.</p>
+  <h2>6. Service providers and transfers</h2>
+  <p>UNKNOWN currently uses Cloudflare services for hosting, application execution, database storage and real-time connections. Those providers process information as needed to deliver and secure the service, under their own terms and privacy documentation. Infrastructure may process data outside your state or country. The operator must verify applicable contractual, transfer and disclosure requirements before launch.</p>
+  <h2>7. Safety and age</h2>
+  <p>UNKNOWN is intended for adults aged 18 and over. The current age gate is a self-attestation checkbox, not identity or age verification. Do not treat it as proof of age. Do not share passwords, financial details, addresses or other identifying information in a conversation. Reports are not guaranteed to be reviewed until a trained moderation team and response process are operating.</p>
+  <h2>8. Your choices and requests</h2>
+  <p>Because guest sessions are temporary and not tied to a verified identity, the operator may need limited information to locate a specific record or assess a request. Once the operator's verified privacy contact is published, you may use it to ask about access, correction, deletion, grievance handling or other rights available under applicable law. The operator must establish a working request process and response timelines before launch.</p>
+  <h2>9. Children</h2>
+  <p>UNKNOWN is not intended for anyone under 18. If the operator becomes aware that a minor has used the service, the operator should follow its documented safety and legal response process.</p>
+  <h2>10. Changes and contact</h2>
+  <p>Material changes to this policy will be reflected on this page with an updated date. The operator's legal identity, jurisdiction, and working contact details are launch blockers and must be completed before this policy is presented as final.</p>
+  <p><strong>This is a product-specific draft, not legal advice or a statement of legal compliance.</strong> Have qualified counsel review it against the actual operator, deployment, data flows and applicable law before launch.</p>
+  <nav><a href="/">Home</a><a href="/terms.html">Terms and Conditions</a></nav>
+</main>
+<footer>UNKNOWN · Talk freely. Stay unknown.</footer>
+</body>
+</html>
