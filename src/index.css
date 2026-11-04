@@ -57,3 +57,68 @@ img,svg,video,canvas{max-width:100%}
   .message-row{min-width:0}
   .message-content{min-width:0;max-width:100%}
 }
+
+
+/* Editorial visual system: flat surfaces, restrained geometry, no gradients or motion. */
+:root{color:#f2f0e9;background:#111210;font-family:Arial,Helvetica,sans-serif}
+html{scroll-behavior:auto}
+body,.app-shell{background:#111210;color:#f2f0e9}
+.app-shell{background:#111210}
+.hero h1 span,.flow-card h1 span,.section-heading h2 span,.safety-copy h2 span,.closing-cta h2 span{color:#d7a66a}
+.eyebrow,.text-link{color:#d7a66a}
+.topbar{border-bottom:1px solid #34352f}
+.nav-links{color:#b9b8ae}
+.nav-links a:hover,.footer-links a:hover{color:#fff}
+.nav-cta,.button-secondary{border:1px solid #65665c;background:transparent;color:#f2f0e9;border-radius:3px;box-shadow:none}
+.nav-cta:hover,.button-secondary:hover{background:#292a25;border-color:#a5a596}
+.button-primary{background:#d7a66a;color:#171713;border:1px solid #d7a66a;border-radius:3px;box-shadow:none;transition:none}
+.button-primary:hover{transform:none;filter:none;background:#e2b77f}
+.hero{min-height:520px}
+.hero-art{filter:none}
+.art-glow,.hero-orbit,.center-ring,.center-ring:before,.center-ring:after{display:none}
+.center-core{border-radius:3px;background:#292a25;border:1px solid #77786d;box-shadow:none}
+.chat-orb,.floating-note{background:#20211d;border:1px solid #45463d;border-radius:3px;box-shadow:none;backdrop-filter:none}
+.orb-avatar,.bubble-icon,.feature-icon,.shield-back,.safety-chip,.session-avatar,.stranger-avatar,.message-avatar,.modal-icon{border-radius:3px;box-shadow:none}
+.orb-avatar{background:#34352f;color:#e3b77f}
+.bubble-icon{background:#2b3734;color:#b5c9bd}
+.trust-strip{border-color:#34352f}
+.trust-strip strong{color:#d7a66a}
+.feature-card{background:#191a17;border:1px solid #3b3c34;border-radius:3px}
+.feature-icon.violet,.feature-icon.blue,.feature-icon.green{background:#292a25;color:#d7a66a}
+.safety-visual{background:#191a17;border:1px solid #3b3c34;border-radius:3px}
+.shield-back{background:#292a25;border:1px solid #66675d;color:#d7a66a;transform:none}
+.safety-chip{background:#20211d;border:1px solid #45463d;color:#dedbd1}
+.safety-copy li svg{color:#b5c9bd}
+.closing-cta{background:#111210;border-color:#34352f}
+.flow-card{background:#191a17;border:1px solid #3b3c34;border-radius:3px}
+.mode-option{background:#20211d;border:1px solid #45463d;border-radius:3px}
+.mode-option svg{color:#d7a66a}
+.mode-option.active{border-color:#d7a66a;background:#2b2923;box-shadow:none}
+.interest{border-radius:3px;background:#20211d}
+.interest.selected{border-color:#d7a66a;background:#342d23;color:#f1d5b3}
+.select-label select,.report-select{background:#171814;color:#f2f0e9;border:1px solid #65665c;border-radius:3px}
+.age-check input{accent-color:#d7a66a}
+.demo-pill{border-radius:3px;color:#d7a66a;border-color:#65665c;background:#20211d}
+.chat-sidebar,.chat-panel{border:1px solid #3b3c34;border-radius:3px;background:#191a17}
+.session-avatar{background:#34352f;color:#e3b77f}
+.preference-line svg{color:#d7a66a}
+.privacy-note{background:#20211d;border:1px solid #45463d;border-radius:3px;color:#d7a66a}
+.privacy-note b{color:#f2f0e9}
+.chat-header{border-bottom:1px solid #3b3c34}
+.chat-actions>button:not(.next-button){border:1px solid #55564d;border-radius:3px}
+.next-button{background:#292a25;border:1px solid #65665c;border-radius:3px;color:#f2f0e9}
+.message-bubble,.mine .message-bubble{background:#252620;border:1px solid #414239;border-radius:3px;color:#f2f0e9}
+.composer{border:1px solid #65665c;border-radius:3px;background:#171814}
+.composer button{background:#d7a66a;color:#171713;border-radius:3px}
+.toast{background:#20211d;border:1px solid #65665c;border-radius:3px;box-shadow:none;color:#f2f0e9}
+.modal-backdrop{backdrop-filter:none}
+.modal{background:#191a17;border:1px solid #55564d;border-radius:3px;box-shadow:none}
+.modal-icon{background:#292a25;color:#d7a66a}
+.block-warning{background:#20211d;border-radius:3px}
+button,a{scroll-behavior:auto}
+@media(prefers-reduced-motion:no-preference){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Motion is intentionally absent across the product. */
+html{scroll-behavior:auto!important}
+*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+button:hover,.button-primary:hover,.nav-cta:hover,.button-secondary:hover{transform:none!important;filter:none!important}

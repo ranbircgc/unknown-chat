@@ -111,3 +111,37 @@
   box-shadow:0 12px 50px rgba(74,54,145,.2);
 }
 .theme-light .center-core span{color:#7656e8}
+
+/* Neutral light theme matching the editorial brand */
+.theme-light .app-shell{background:#f3f1eb;color:#20211d}
+.theme-light .topbar,.theme-light .footer{border-color:#d5d2c8}
+.theme-light .nav-links,.theme-light .footer-links,.theme-light .footer{color:#65665c}
+.theme-light .nav-links a:hover,.theme-light .footer-links a:hover{color:#20211d}
+.theme-light .nav-cta,.theme-light .button-secondary,.theme-light .theme-toggle{background:transparent;color:#20211d;border-color:#aaa79b;border-radius:3px}
+.theme-light .hero-sub,.theme-light .section-heading p,.theme-light .safety-copy>p{color:#55564e}
+.theme-light .hero h1 span,.theme-light .flow-card h1 span,.theme-light .section-heading h2 span,.theme-light .safety-copy h2 span,.theme-light .closing-cta h2 span{color:#98652d}
+.theme-light .eyebrow,.theme-light .text-link{color:#98652d}
+.theme-light .trust-strip{border-color:#d5d2c8;color:#55564e}
+.theme-light .trust-strip strong{color:#98652d}
+.theme-light .feature-card,.theme-light .flow-card,.theme-light .chat-sidebar,.theme-light .chat-panel{background:#fff;border-color:#d5d2c8;border-radius:3px}
+.theme-light .feature-card p,.theme-light .feature-number,.theme-light .sidebar-label,.theme-light .chat-date,.theme-light .conversation-hint{color:#65665c}
+.theme-light .feature-icon,.theme-light .shield-back,.theme-light .safety-chip,.theme-light .session-avatar,.theme-light .stranger-avatar,.theme-light .message-avatar,.theme-light .modal-icon{background:#ece9df;color:#98652d;border-radius:3px}
+.theme-light .safety-visual{background:#ece9df;border-color:#d5d2c8;border-radius:3px}
+.theme-light .safety-chip,.theme-light .privacy-note{background:#f3f1eb;border-color:#d5d2c8;color:#55564e;border-radius:3px}
+.theme-light .safety-copy ul{color:#44453e}
+.theme-light .mode-option,.theme-light .interest{background:#f3f1eb;color:#20211d;border-color:#c9c6bc;border-radius:3px}
+.theme-light .mode-option.active,.theme-light .interest.selected{background:#eee4d5;color:#20211d;border-color:#98652d;box-shadow:none}
+.theme-light .mode-option svg,.theme-light .preference-line svg{color:#98652d}
+.theme-light .select-label select,.theme-light .report-select{background:#fff;color:#20211d;border-color:#aaa79b;border-radius:3px}
+.theme-light .age-check{color:#55564e}
+.theme-light .chat-header{border-color:#d5d2c8}
+.theme-light .message-bubble,.theme-light .mine .message-bubble{background:#f3f1eb;color:#20211d;border-color:#d5d2c8;border-radius:3px}
+.theme-light .composer{background:#fff;border-color:#aaa79b;border-radius:3px}
+.theme-light .composer textarea{color:#20211d}
+.theme-light .composer textarea::placeholder{color:#77786d}
+.theme-light .composer button,.theme-light .button-primary{background:#d7a66a;color:#171713;border-color:#d7a66a;border-radius:3px;box-shadow:none}
+.theme-light .next-button,.theme-light .demo-pill{background:#ece9df;color:#20211d;border-color:#aaa79b;border-radius:3px}
+.theme-light .chat-orb,.theme-light .floating-note{background:#fff;color:#20211d;border-color:#d5d2c8;border-radius:3px}
+.theme-light .closing-cta{background:#f3f1eb;border-color:#d5d2c8}
+.theme-light .toast,.theme-light .modal{background:#fff;color:#20211d;border-color:#aaa79b;border-radius:3px;box-shadow:none}
+.theme-light .modal p,.theme-light .block-warning{color:#55564e}
