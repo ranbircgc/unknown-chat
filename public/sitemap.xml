@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://unknown-chat-web.pages.dev/</loc>
-    <changefreq>weekly</changefreq>
-  </url>
+  <url><loc>https://unknown-chat-web.pages.dev/</loc></url>
+  <url><loc>https://unknown-chat-web.pages.dev/privacy.html</loc></url>
+  <url><loc>https://unknown-chat-web.pages.dev/terms.html</loc></url>
 </urlset>
