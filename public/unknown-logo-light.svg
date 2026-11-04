@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="220" viewBox="0 0 720 220" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">UNKNOWN logo — light theme</title>
+  <desc id="desc">Minimal chat mark and UNKNOWN wordmark with the tagline Talk freely. Stay unknown.</desc>
+  <defs><linearGradient id="accent" x1="24" y1="24" x2="164" y2="164" gradientUnits="userSpaceOnUse"><stop stop-color="#8B5CF6"/><stop offset="1" stop-color="#4F46E5"/></linearGradient></defs>
+  <g transform="translate(28 28)">
+    <path d="M24 10H126C139.255 10 150 20.745 150 34V112C150 125.255 139.255 136 126 136H76L43 160V136H24C10.745 136 0 125.255 0 112V34C0 20.745 10.745 10 24 10Z" stroke="url(#accent)" stroke-width="8" stroke-linejoin="round"/>
+    <circle cx="48" cy="73" r="7" fill="#8B5CF6"/><circle cx="75" cy="73" r="7" fill="#6D5CE7"/><circle cx="102" cy="73" r="7" fill="#4F46E5"/>
+  </g>
+  <text x="208" y="119" fill="#25243A" font-family="Inter, Arial, sans-serif" font-size="66" font-weight="750" letter-spacing="-2.5">UNKNOWN<tspan fill="#7656E8">.</tspan></text>
+  <text x="212" y="157" fill="#66657A" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="600" letter-spacing="4.2">TALK FREELY. STAY UNKNOWN.</text>
+</svg>
