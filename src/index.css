@@ -122,3 +122,10 @@ button,a{scroll-behavior:auto}
 html{scroll-behavior:auto!important}
 *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 button:hover,.button-primary:hover,.nav-cta:hover,.button-secondary:hover{transform:none!important;filter:none!important}
+
+
+/* Final palette cleanup for the editorial visual system. */
+.note-b{color:#d7a66a}
+.center-caption{color:#77786d}
+.theme-light .center-core{background:#ece9df!important;color:#20211d;border-color:#aaa79b;box-shadow:none}
+.theme-light .center-core span{color:#98652d}
