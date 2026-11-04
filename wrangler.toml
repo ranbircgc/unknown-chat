@@ -4,7 +4,7 @@ compatibility_date = "2026-11-04"
 
 [vars]
 # Set APP_ORIGIN to your exact deployed website origin before deployment.
-# APP_ORIGIN = "https://your-site.pages.dev"
+APP_ORIGIN = "http://localhost:5173"
 
 [[d1_databases]]
 binding = "DB"
