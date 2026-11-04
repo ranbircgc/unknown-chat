@@ -23,6 +23,7 @@ function App() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
+  const recordingStartedAtRef = useRef(0);
   const [isRecording, setIsRecording] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifQuery, setGifQuery] = useState('');
@@ -194,7 +195,7 @@ function App() {
         if (blob.size < 1 || blob.size > 1_500_000) { setNotice('Voice note is empty or exceeds the 1.5 MB limit.'); return; }
         const socket = socketRef.current;
         if (!socket || socket.readyState !== WebSocket.OPEN || connectionState !== 'connected') { setNotice('Chat ended before the voice note could be sent.'); return; }
-        const durationMs = Math.min(30_000, Math.max(500, recorderRef.current?.state === 'inactive' ? 1000 : 1000));
+        const durationMs = Math.min(30_000, Math.max(500, Date.now() - recordingStartedAtRef.current));
         socket.send(JSON.stringify({ type: 'voice.begin', mimeType, durationMs }));
         const buffer = await blob.arrayBuffer();
         if (socket.readyState === WebSocket.OPEN) {
@@ -204,6 +205,7 @@ function App() {
         }
       };
       recorder.start();
+      recordingStartedAtRef.current = Date.now();
       setIsRecording(true);
       window.setTimeout(() => { if (recorder.state === 'recording') { recorder.stop(); setIsRecording(false); } }, 30_000);
     } catch { setNotice('Microphone permission was denied or unavailable.'); setIsRecording(false); }
@@ -223,7 +225,7 @@ function App() {
     setNotice('');
   };
 
-  useEffect(() => () => { socketRef.current?.close(); }, []);
+  useEffect(() => () => { socketRef.current?.close(); recorderRef.current?.stop(); recordingStreamRef.current?.getTracks().forEach(track => track.stop()); }, []);
 
   return (
     <div className={`app-shell ${theme === "light" ? "theme-light" : ""}`} data-theme={theme}>
