@@ -176,6 +176,15 @@ export default {
 
     return json({ error: "Not found" }, 404);
   },
+
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    const now = Math.floor(Date.now() / 1000);
+    ctx.waitUntil(env.DB.batch([
+      env.DB.prepare("DELETE FROM conversation_reports WHERE expires_at <= ?").bind(now),
+      env.DB.prepare("DELETE FROM user_blocks WHERE expires_at <= ?").bind(now),
+      env.DB.prepare("DELETE FROM guest_sessions WHERE expires_at <= ? OR status = 'revoked'").bind(now),
+    ]));
+  },
 };
 
 export { MatchmakerDO } from "./matchmaker";

@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "dev:worker": "wrangler dev --port 8787",
-    "deploy:worker": "wrangler deploy"
+    "deploy:worker": "wrangler d1 migrations apply unknown-chat-db --remote && wrangler deploy"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

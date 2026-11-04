@@ -7,7 +7,7 @@ type Mode = 'random' | 'interests';
 const interests = ['Technology', 'AI & ML', 'Gaming', 'Music', 'Movies', 'Anime', 'Travel', 'Food', 'Fitness', 'Books', 'Philosophy', 'Startups', 'Memes', 'Deep talks', 'Just bored'];
 
 type ChatMessage = { from: 'me' | 'them'; text: string; time: string };
-type ServerEvent = { type?: string; message?: string; text?: string; sentAt?: number; reason?: string };
+type ServerEvent = { type?: string; message?: string; text?: string; sentAt?: number; reason?: string; stranger?: { nickname?: string } };
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -21,6 +21,7 @@ function App() {
   const socketRef = useRef<WebSocket | null>(null);
   const [draft, setDraft] = useState('');
   const [modal, setModal] = useState<'report' | 'block' | null>(null);
+  const [reportReason, setReportReason] = useState('Harassment or bullying');
   const [notice, setNotice] = useState('');
   const [chatStatus, setChatStatus] = useState('You both arrived as strangers. Keep it kind. Keep it curious.');
   const [pendingSection, setPendingSection] = useState<string | null>(null);
@@ -58,6 +59,19 @@ function App() {
         setConnectionState('connected');
         setChatStatus('You both arrived as strangers. Keep it kind. Keep it curious.');
         setNotice('');
+      } else if (data.type === 'report.received') {
+        setModal(null);
+        setNotice(data.message || 'Report recorded. Leave the chat if you feel unsafe.');
+      } else if (data.type === 'block.saved') {
+        setModal(null);
+        setConnectionState('waiting');
+        setMessages([]);
+        setDraft('');
+        setChatStatus('You blocked this person. Finding someone else…');
+        setNotice(data.message || 'This person is blocked for future matching.');
+      } else if (data.type === 'session.replaced') {
+        setConnectionState('error');
+        setNotice(data.message || 'This guest session connected in another tab.');
       } else if (data.type === 'message.new') {
         setMessages(current => [...current, { from: 'them', text: data.text || '', time: data.sentAt ? new Date(data.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now' }]);
       } else if (data.type === 'room.closed') {
@@ -213,7 +227,7 @@ function App() {
 
       <footer className="footer"><div className="footer-brand"><img className="brand-logo footer-logo" src={theme === "light" ? "/unknown-logo-light.svg" : "/unknown-logo.svg"} alt="UNKNOWN — Talk freely. Stay unknown." /></div><span>Talk freely. Stay unknown.</span><div className="footer-links"><a href="#safety" onClick={e => { e.preventDefault(); navigateSection('safety'); }}>Safety</a><a href="#about" onClick={e => { e.preventDefault(); navigateSection('about'); }}>Guidelines</a><a href="mailto:hello@unknown.example">Contact</a></div><small>© 2026 UNKNOWN. Built for better conversations.</small></footer>
 
-      {modal && <div className="modal-backdrop" onClick={() => setModal(null)}><div className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)}><X size={18}/></button><div className="modal-icon">{modal === 'report' ? <Flag size={21}/> : <Ban size={21}/>}</div><h3>{modal === 'report' ? 'Report this conversation' : 'Block this person?'}</h3><p>{modal === 'report' ? 'Choose a reason. Reporting is not available yet. Please leave the chat if you feel unsafe.' : 'Blocking is not implemented yet. You can leave this conversation immediately.'}</p>{modal === 'report' ? <select className="report-select"><option>Harassment or bullying</option><option>Threats or violence</option><option>Hate speech</option><option>Sexual harassment or exploitation</option><option>Scam or spam</option><option>Sharing private information</option><option>Other</option></select> : <div className="block-warning">You can leave without explaining why.</div>}<div className="modal-actions"><button className="button-secondary" onClick={() => setModal(null)}>Cancel</button><button className="button-primary" onClick={() => { setModal(null); setNotice(modal === 'report' ? 'Reports are not connected yet. Please leave if you feel unsafe.' : 'Blocking is not connected yet. Leaving this chat instead.'); }}>{modal === 'report' ? 'Submit report' : 'Block & leave'}</button></div></div></div>}
+      {modal && <div className="modal-backdrop" onClick={() => setModal(null)}><div className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)}><X size={18}/></button><div className="modal-icon">{modal === 'report' ? <Flag size={21}/> : <Ban size={21}/>}</div><h3>{modal === 'report' ? 'Report this conversation' : 'Block this person?'}</h3><p>{modal === 'report' ? 'Choose the main reason. We store the report reason and session references, not chat messages.' : 'This person will be blocked for the rest of your current guest session.'}</p>{modal === 'report' ? <select className="report-select" value={reportReason} onChange={e => setReportReason(e.target.value)}><option>Harassment or bullying</option><option>Threats or violence</option><option>Hate speech</option><option>Sexual harassment or exploitation</option><option>Scam or spam</option><option>Sharing private information</option><option>Other</option></select> : <div className="block-warning">You can leave without explaining why.</div>}<div className="modal-actions"><button className="button-secondary" onClick={() => setModal(null)}>Cancel</button><button className="button-primary" onClick={() => { if (socketRef.current?.readyState !== WebSocket.OPEN || connectionState !== 'connected') { setModal(null); setNotice('There is no active conversation.'); return; } socketRef.current.send(JSON.stringify(modal === 'report' ? { type: 'report.submit', reason: reportReason } : { type: 'block.add' })); setNotice(modal === 'report' ? 'Submitting report…' : 'Blocking this person…'); if (modal === 'block') setModal(null); }}>{modal === 'report' ? 'Submit report' : 'Block & leave'}</button></div></div></div>}
     </div>
   );
 }
