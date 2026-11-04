@@ -149,7 +149,7 @@ function App() {
   return (
     <div className={`app-shell ${theme === "light" ? "theme-light" : ""}`} data-theme={theme}>
       <header className="topbar">
-        <button className="brand" onClick={() => { setScreen('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-label="UNKNOWN home"><img className="brand-logo" src={theme === "light" ? "/unknown-logo-light.svg" : "/unknown-logo.svg"} alt="UNKNOWN — Talk freely. Stay unknown." /></button>
+        <button className="brand" onClick={() => { setScreen('home'); window.scrollTo({ top: 0, behavior: 'auto' }); }} aria-label="UNKNOWN home"><img className="brand-logo" src={theme === "light" ? "/unknown-logo-light.svg" : "/unknown-logo.svg"} alt="UNKNOWN — Talk freely. Stay unknown." /></button>
         <nav className="nav-links"><a href="#how" onClick={e => { e.preventDefault(); navigateSection('how'); }}>How it works</a><a href="#safety" onClick={e => { e.preventDefault(); navigateSection('safety'); }}>Your safety</a><a href="#about" onClick={e => { e.preventDefault(); navigateSection('about'); }}>About</a></nav>
         <div className="topbar-actions"><button className="theme-toggle" onClick={() => setTheme(current => current === "dark" ? "light" : "dark")} aria-label="Toggle colour theme" title="Toggle colour theme">{theme === "dark" ? <Sun size={17}/> : <Moon size={17}/>}<span>{theme === "dark" ? "Light mode" : "Dark mode"}</span></button><button className="nav-cta" onClick={() => startSetup('random')}>Start talking <ArrowUpRight size={15}/></button></div>
       </header>
