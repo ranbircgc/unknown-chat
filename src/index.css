@@ -116,11 +116,11 @@ body,.app-shell{background:#111210;color:#f2f0e9}
 .modal-icon{background:#292a25;color:#d7a66a}
 .block-warning{background:#20211d;border-radius:3px}
 button,a{scroll-behavior:auto}
-@media(prefers-reduced-motion:no-preference){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(prefers-reduced-motion:no-preference){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 
 /* Motion is intentionally absent across the product. */
 html{scroll-behavior:auto!important}
-*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}
 button:hover,.button-primary:hover,.nav-cta:hover,.button-secondary:hover{transform:none!important;filter:none!important}
 
 
@@ -167,3 +167,15 @@ button:hover,.button-primary:hover,.nav-cta:hover,.button-secondary:hover{transf
 .theme-light .preview-message{background:#ebe8de;border-color:#d1ccbf}
 .theme-light .preview-message.sent{background:#f1e4d2;border-color:#c8a77e}
 .theme-light .preview-compose{border-color:#b8b3a6;color:#77786d}
+
+
+/* Restrained motion: feedback and transitions only where they aid comprehension. */
+.live-dot{animation:unknown-status-pulse 2.2s ease-in-out infinite!important}
+.preview-window{animation:unknown-panel-enter .42s ease-out both!important}
+.message-row{animation:unknown-message-enter .2s ease-out both!important}
+.button-primary:active,.button-secondary:active,.nav-cta:active{transform:translateY(1px)!important}
+.stranger-avatar,.session-avatar,.preview-avatar{display:grid;place-items:center}
+@keyframes unknown-status-pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(154,185,165,0)}50%{opacity:.72;box-shadow:0 0 0 4px rgba(154,185,165,.10)}}
+@keyframes unknown-panel-enter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes unknown-message-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.live-dot,.preview-window,.message-row{animation:none!important}}
