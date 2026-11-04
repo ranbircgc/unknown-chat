@@ -9,7 +9,7 @@ APP_ORIGIN = "http://localhost:5173"
 [[d1_databases]]
 binding = "DB"
 database_name = "unknown-chat-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "06fc8f78-3b41-4ca5-a537-da5fa687af18"
 migrations_dir = "migrations"
 
 [[durable_objects.bindings]]
