@@ -22,8 +22,20 @@ function App() {
   const [draft, setDraft] = useState('');
   const [modal, setModal] = useState<'report' | 'block' | null>(null);
   const [notice, setNotice] = useState('');
+  const [chatStatus, setChatStatus] = useState('You both arrived as strangers. Keep it kind. Keep it curious.');
+  const [pendingSection, setPendingSection] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('unknown-theme') as 'dark' | 'light') || 'dark');
   useEffect(() => { localStorage.setItem('unknown-theme', theme); }, [theme]);
+  useEffect(() => {
+    if (screen === 'home' && pendingSection) {
+      document.getElementById(pendingSection)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPendingSection(null);
+    }
+  }, [screen, pendingSection]);
+  const navigateSection = (section: string) => {
+    if (screen === 'home') document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else { setPendingSection(section); setScreen('home'); }
+  };
 
   const startSetup = (nextMode: Mode) => { setMode(nextMode); setScreen('setup'); window.scrollTo(0, 0); };
   const toggleInterest = (item: string) => setSelected(current => current.includes(item) ? current.filter(x => x !== item) : current.length < 5 ? [...current, item] : current);
@@ -44,13 +56,16 @@ function App() {
         setNotice('Looking for someone. Keep this page open.');
       } else if (data.type === 'match.found') {
         setConnectionState('connected');
+        setChatStatus('You both arrived as strangers. Keep it kind. Keep it curious.');
         setNotice('');
       } else if (data.type === 'message.new') {
         setMessages(current => [...current, { from: 'them', text: data.text || '', time: data.sentAt ? new Date(data.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now' }]);
       } else if (data.type === 'room.closed') {
         setConnectionState('waiting');
+        setMessages([]);
         const reason = data.reason || 'The conversation ended.';
-        setMessages(current => [...current, { from: 'them', text: reason + ' Finding your next stranger…', time: 'Now' }]);
+        setChatStatus(reason + ' Finding your next stranger…');
+        setDraft('');
         setNotice('Finding your next stranger…');
       } else if (data.type === 'error') {
         setNotice(data.message || 'Something went wrong.');
@@ -121,7 +136,7 @@ function App() {
     <div className={`app-shell ${theme === "light" ? "theme-light" : ""}`} data-theme={theme}>
       <header className="topbar">
         <button className="brand" onClick={() => setScreen('home')} aria-label="UNKNOWN home"><span className="brand-mark">U</span><span>UNKNOWN<span className="brand-period">.</span></span></button>
-        <nav className="nav-links"><a href="#how">How it works</a><a href="#safety">Your safety</a><a href="#about">About</a></nav>
+        <nav className="nav-links"><a href="#how" onClick={e => { e.preventDefault(); navigateSection('how'); }}>How it works</a><a href="#safety" onClick={e => { e.preventDefault(); navigateSection('safety'); }}>Your safety</a><a href="#about" onClick={e => { e.preventDefault(); navigateSection('about'); }}>About</a></nav>
         <div className="topbar-actions"><button className="theme-toggle" onClick={() => setTheme(current => current === "dark" ? "light" : "dark")} aria-label="Toggle colour theme" title="Toggle colour theme">{theme === "dark" ? <Sun size={17}/> : <Moon size={17}/>}<span>{theme === "dark" ? "Light mode" : "Dark mode"}</span></button><button className="nav-cta" onClick={() => startSetup('random')}>Start talking <ArrowUpRight size={15}/></button></div>
       </header>
 
@@ -189,14 +204,14 @@ function App() {
         <div className="chat-layout">
           <aside className="chat-sidebar"><button className="back-link" onClick={leaveChat}><ChevronLeft size={16}/> Exit chat</button><div className="sidebar-label">YOUR SESSION</div><div className="session-card"><div className="session-avatar">U</div><div><b>You are {nickname}</b><small>Guest session · Temporary</small></div></div><div className="sidebar-label">YOUR PREFERENCES</div><div className="preference-line"><Globe2 size={15}/>{language}</div><div className="preference-line"><Sparkles size={15}/>{mode === 'random' ? 'Random matching' : selected.slice(0, 3).join(', ')}</div><div className="privacy-note"><LockKeyhole size={16}/><span><b>Keep it personal, not identifiable.</b><small>Don't share passwords, addresses, or financial details.</small></span></div></aside>
           <section className="chat-panel"><div className="chat-header"><div className="stranger-avatar">?</div><div className="stranger-info"><b>Someone new</b><small><span className="live-dot"/> {connectionState === "connected" ? "Connected" : connectionState === "waiting" ? "Finding a stranger" : "Connecting"}</small></div><div className="chat-actions"><button title="Report" onClick={() => setModal('report')}><Flag size={16}/></button><button title="Block" onClick={() => setModal('block')}><Ban size={16}/></button><button className="next-button" onClick={nextDemo}><Shuffle size={14}/> Next stranger</button></div></div>
-            <div className="message-area"><div className="chat-date">A NEW CONVERSATION</div><div className="conversation-hint">{connectionState === "waiting" ? "Your next conversation is just around the corner." : "You both arrived as strangers. Keep it kind. Keep it curious."}</div>{messages.map((m, i) => <div key={i} className={m.from === 'me' ? 'message-row mine' : 'message-row'}><div className="message-avatar">{m.from === 'me' ? 'U' : '?'}</div><div className="message-content"><div className="message-meta">{m.from === 'me' ? 'You' : 'Someone new'} <span>{m.time}</span></div><div className="message-bubble">{m.text}</div></div></div>)}</div>
+            <div className="message-area"><div className="chat-date">A NEW CONVERSATION</div><div className="conversation-hint">{chatStatus}</div>{messages.map((m, i) => <div key={i} className={m.from === 'me' ? 'message-row mine' : 'message-row'}><div className="message-avatar">{m.from === 'me' ? 'U' : '?'}</div><div className="message-content"><div className="message-meta">{m.from === 'me' ? 'You' : 'Someone new'} <span>{m.time}</span></div><div className="message-bubble">{m.text}</div></div></div>)}</div>
             <div className="composer"><textarea value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder="Write something kind..." rows={1}/><span>{draft.length}/2000</span><button onClick={sendMessage} disabled={!draft.trim()} aria-label="Send message"><Send size={17}/></button></div><div className="chat-bottom-note"><LockKeyhole size={12}/> Never share sensitive personal information.</div>
           </section>
         </div>
         {notice && <div className="toast">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
       </main>}
 
-      <footer className="footer"><div className="footer-brand"><span className="brand-mark">U</span><b>UNKNOWN<span className="brand-period">.</span></b></div><span>Talk freely. Stay unknown.</span><div className="footer-links"><a href="#safety">Safety</a><a href="#about">Guidelines</a><a href="mailto:hello@unknown.example">Contact</a></div><small>© 2026 UNKNOWN. Built for better conversations.</small></footer>
+      <footer className="footer"><div className="footer-brand"><span className="brand-mark">U</span><b>UNKNOWN<span className="brand-period">.</span></b></div><span>Talk freely. Stay unknown.</span><div className="footer-links"><a href="#safety" onClick={e => { e.preventDefault(); navigateSection('safety'); }}>Safety</a><a href="#about" onClick={e => { e.preventDefault(); navigateSection('about'); }}>Guidelines</a><a href="mailto:hello@unknown.example">Contact</a></div><small>© 2026 UNKNOWN. Built for better conversations.</small></footer>
 
       {modal && <div className="modal-backdrop" onClick={() => setModal(null)}><div className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)}><X size={18}/></button><div className="modal-icon">{modal === 'report' ? <Flag size={21}/> : <Ban size={21}/>}</div><h3>{modal === 'report' ? 'Report this conversation' : 'Block this person?'}</h3><p>{modal === 'report' ? 'Choose a reason. Reporting is not available yet. Please leave the chat if you feel unsafe.' : 'Blocking is not implemented yet. You can leave this conversation immediately.'}</p>{modal === 'report' ? <select className="report-select"><option>Harassment or bullying</option><option>Threats or violence</option><option>Hate speech</option><option>Sexual harassment or exploitation</option><option>Scam or spam</option><option>Sharing private information</option><option>Other</option></select> : <div className="block-warning">You can leave without explaining why.</div>}<div className="modal-actions"><button className="button-secondary" onClick={() => setModal(null)}>Cancel</button><button className="button-primary" onClick={() => { setModal(null); setNotice(modal === 'report' ? 'Reports are not connected yet. Please leave if you feel unsafe.' : 'Blocking is not connected yet. Leaving this chat instead.'); }}>{modal === 'report' ? 'Submit report' : 'Block & leave'}</button></div></div></div>}
     </div>

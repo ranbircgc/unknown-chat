@@ -68,3 +68,37 @@
 .theme-light .floating-note{background:#fff;color:#45445b;border-color:#e0deeb}
 .theme-light .closing-cta{border-color:#e2e2ec}
 .theme-light .app-shell{background:#f5f6fb}
+
+/* Stronger, consistent readability pass */
+.nav-links{font-size:15px}
+.demo-banner{font-size:14px}
+.sidebar-label{font-size:11px}
+.session-card b,.stranger-info b{font-size:15px}
+.session-card small,.stranger-info small{font-size:12px}
+.preference-line{font-size:13px}
+.privacy-note b{font-size:12px}
+.privacy-note small{font-size:11px}
+.chat-date{font-size:11px}
+.conversation-hint{font-size:14px;line-height:1.8}
+.message-meta{font-size:12px}
+.message-bubble{font-size:16px;line-height:1.7}
+.composer textarea{font-size:16px}
+.composer>span{font-size:11px}
+.chat-bottom-note{font-size:11px}
+.next-button{font-size:13px;padding:10px 13px}
+.chat-actions>button:not(.next-button){width:40px;height:40px}
+.theme-toggle,.nav-cta{font-size:14px}
+.hero-sub{font-size:17px}
+.feature-card p,.section-heading p,.safety-copy>p{font-size:15px}
+.feature-card h3{font-size:20px}
+.mode-option b{font-size:16px}
+.mode-option small,.interest,.select-label,.age-check{font-size:13px}
+.inline-notice{font-size:14px}
+.footer,.footer-links{font-size:12px}
+@media(max-width:620px){
+  .demo-banner{font-size:12px}
+  .message-bubble{font-size:16px}
+  .composer textarea{font-size:16px}
+  .conversation-hint{font-size:13px}
+  .footer,.footer-links{font-size:11px}
+}
