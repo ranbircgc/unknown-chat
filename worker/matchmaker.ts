@@ -76,8 +76,8 @@ export class MatchmakerDO {
 
   private async isBlocked(first: string, second: string) {
     const row = await this.env.DB.prepare(
-      "SELECT 1 AS blocked FROM user_blocks WHERE (blocker_session_id = ? AND blocked_session_id = ?) OR (blocker_session_id = ? AND blocked_session_id = ?) LIMIT 1",
-    ).bind(first, second, second, first).first<{ blocked: number }>();
+      "SELECT 1 AS blocked FROM user_blocks WHERE expires_at > ? AND ((blocker_session_id = ? AND blocked_session_id = ?) OR (blocker_session_id = ? AND blocked_session_id = ?)) LIMIT 1",
+    ).bind(Math.floor(Date.now() / 1000), first, second, second, first).first<{ blocked: number }>();
     return Boolean(row);
   }
 
@@ -184,8 +184,8 @@ export class MatchmakerDO {
         return;
       }
       await this.env.DB.prepare(
-        "INSERT INTO conversation_reports (id, reporter_session_id, reported_session_id, reason, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
-      ).bind(crypto.randomUUID(), attachment.sessionId, (peer.deserializeAttachment() as MatchAttachment).sessionId, reason, Math.floor(Date.now() / 1000)).run();
+        "INSERT INTO conversation_reports (id, reporter_session_id, reported_session_id, reason, status, created_at, expires_at) VALUES (?, ?, ?, ?, 'pending', ?, ?)",
+      ).bind(crypto.randomUUID(), attachment.sessionId, (peer.deserializeAttachment() as MatchAttachment).sessionId, reason, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000) + 90 * 24 * 60 * 60).run();
       socket.serializeAttachment({ ...attachment, reportedRoomId: attachment.roomId });
       socket.send(JSON.stringify({ type: "report.received", message: "Report recorded. If you feel unsafe, leave the conversation." }));
       return;
@@ -198,14 +198,14 @@ export class MatchmakerDO {
       }
       const peerData = peer.deserializeAttachment() as MatchAttachment;
       await this.env.DB.prepare(
-        "INSERT OR IGNORE INTO user_blocks (blocker_session_id, blocked_session_id, created_at) VALUES (?, ?, ?)",
-      ).bind(attachment.sessionId, peerData.sessionId, Math.floor(Date.now() / 1000)).run();
+        "INSERT OR REPLACE INTO user_blocks (blocker_session_id, blocked_session_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+      ).bind(attachment.sessionId, peerData.sessionId, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000) + 180 * 24 * 60 * 60).run();
       peer.send(JSON.stringify({ type: "room.closed", reason: "The other person left the conversation." }));
       const waitingPeer = { ...peerData, roomId: null };
       peer.serializeAttachment(waitingPeer);
       await this.tryMatch(peer, waitingPeer);
       socket.serializeAttachment({ ...attachment, roomId: null });
-      socket.send(JSON.stringify({ type: "block.saved", message: "This person is blocked for future matching." }));
+      socket.send(JSON.stringify({ type: "block.saved", message: "This person is blocked for this guest session." }));
       return;
     }
 
@@ -230,7 +230,7 @@ export class MatchmakerDO {
   }
 
   async webSocketError(socket: WebSocket) {
-    this.closePeerRoom(socket);
+    await this.closePeerRoom(socket);
   }
 
   private async closePeerRoom(socket: WebSocket) {
