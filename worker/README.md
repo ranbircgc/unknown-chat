@@ -22,8 +22,8 @@ The frontend is not wired to these endpoints yet.
 ## Important limitations
 
 - The age field is self-attestation only. It is not age verification and is not sufficient for a public 18+ launch.
-- Matching is an early single-coordinator prototype. Interest matching requires at least one shared interest; language is currently stored but not used as a strict filter.
+- Matching is an early single-coordinator prototype. Interest matching requires at least one shared interest; language preferences are enforced as exact matches unless either guest selects Any language.
 - Messages are relayed in memory through the Durable Object and are not intentionally written to D1.
-- Report, block, moderation, abuse prevention, robust rate limiting, abuse evidence handling, retention automation, and legal workflows are not implemented.
+- Report, block, staffed moderation, advanced abuse prevention, abuse evidence handling, retention automation, and legal workflows are not implemented. Baseline session-creation and WebSocket event throttles are present, but are not a substitute for edge protections or moderation.
 - A production launch requires security review, capacity testing, age-assurance design, moderation operations, and legal review.
 - Free-tier quotas are finite; this project does not promise unlimited traffic or guaranteed availability.
