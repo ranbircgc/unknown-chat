@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, MessageCircle, Users, LockKeyhole, Globe2, Heart, Zap, X, Flag, Ban, Send, ChevronLeft, Check, Shuffle, SlidersHorizontal } from 'lucide-react';
+import { Sun, Moon, ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, MessageCircle, Users, LockKeyhole, Globe2, Heart, Zap, X, Flag, Ban, Send, ChevronLeft, Check, Shuffle, SlidersHorizontal } from 'lucide-react';
 
 type Screen = 'home' | 'setup' | 'chat';
 type Mode = 'random' | 'interests';
@@ -22,6 +22,8 @@ function App() {
   const [draft, setDraft] = useState('');
   const [modal, setModal] = useState<'report' | 'block' | null>(null);
   const [notice, setNotice] = useState('');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('unknown-theme') as 'dark' | 'light') || 'dark');
+  useEffect(() => { localStorage.setItem('unknown-theme', theme); }, [theme]);
 
   const startSetup = (nextMode: Mode) => { setMode(nextMode); setScreen('setup'); window.scrollTo(0, 0); };
   const toggleInterest = (item: string) => setSelected(current => current.includes(item) ? current.filter(x => x !== item) : current.length < 5 ? [...current, item] : current);
@@ -47,7 +49,9 @@ function App() {
         setMessages(current => [...current, { from: 'them', text: data.text || '', time: data.sentAt ? new Date(data.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now' }]);
       } else if (data.type === 'room.closed') {
         setConnectionState('waiting');
-        setNotice(data.reason || 'The conversation ended.');
+        const reason = data.reason || 'The conversation ended.';
+        setMessages(current => [...current, { from: 'them', text: reason + ' Finding your next stranger…', time: 'Now' }]);
+        setNotice('Finding your next stranger…');
       } else if (data.type === 'error') {
         setNotice(data.message || 'Something went wrong.');
       }
@@ -114,11 +118,11 @@ function App() {
   useEffect(() => () => { socketRef.current?.close(); }, []);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${theme === "light" ? "theme-light" : ""}`} data-theme={theme}>
       <header className="topbar">
         <button className="brand" onClick={() => setScreen('home')} aria-label="UNKNOWN home"><span className="brand-mark">U</span><span>UNKNOWN<span className="brand-period">.</span></span></button>
         <nav className="nav-links"><a href="#how">How it works</a><a href="#safety">Your safety</a><a href="#about">About</a></nav>
-        <button className="nav-cta" onClick={() => startSetup('random')}>Start talking <ArrowUpRight size={15}/></button>
+        <div className="topbar-actions"><button className="theme-toggle" onClick={() => setTheme(current => current === "dark" ? "light" : "dark")} aria-label="Toggle colour theme" title="Toggle colour theme">{theme === "dark" ? <Sun size={17}/> : <Moon size={17}/>}<span>{theme === "dark" ? "Light mode" : "Dark mode"}</span></button><button className="nav-cta" onClick={() => startSetup('random')}>Start talking <ArrowUpRight size={15}/></button></div>
       </header>
 
       {screen === 'home' && <main>
