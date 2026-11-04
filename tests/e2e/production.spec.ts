@@ -9,7 +9,14 @@ async function createGuest(browser: Browser, options: GuestOptions = {}) {
   await page.getByRole('button', { name: options.interests ? 'Match by interests' : 'Meet a stranger' }).click();
   if (options.interests) {
     await page.getByRole('button', { name: 'Find my people' }).click();
-    for (const interest of options.interests) await page.getByRole('button', { name: interest, exact: true }).click();
+    for (const defaultInterest of ['Technology', 'Music']) {
+      if (!options.interests.includes(defaultInterest)) {
+        await page.locator('.interest').filter({ hasText: defaultInterest }).click();
+      }
+    }
+    for (const interest of options.interests) {
+      await page.locator('.interest').filter({ hasText: interest }).click();
+    }
   }
   await page.getByLabel('Conversation language').selectOption({ label: options.language || 'Any language' });
   await page.getByLabel('I confirm that I am 18 years of age or older.').check();
