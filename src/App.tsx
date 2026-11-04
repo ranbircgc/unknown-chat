@@ -167,14 +167,22 @@ function App() {
             </div>
             <div className="hero-foot"><span><LockKeyhole size={13}/> No public profile</span><span><Zap size={13}/> Leave anytime</span><span><ShieldCheck size={13}/> Safety controls</span></div>
           </div>
-          <div className="hero-art" aria-label="Abstract conversation illustration">
-            <div className="art-glow"/>
-            <div className="chat-orb orb-a"><span className="orb-avatar">?</span><div><b>Someone new</b><small>Guest conversation</small></div><span className="orb-status"/></div>
-            <div className="chat-orb orb-b"><span className="bubble-icon"><MessageCircle size={19}/></span><div><b>A fresh perspective</b><small>One conversation at a time</small></div></div>
-            <div className="art-center"><div className="center-ring"><div className="center-core">U<span>.</span></div></div><span className="center-caption">THE UNKNOWN CONNECTION</span></div>
-            <div className="floating-note note-a">“Hey, how’s your day going?”</div>
-            <div className="floating-note note-b"><Sparkles size={13}/> No introductions needed</div>
-            
+          <div className="hero-art" aria-label="Illustrative preview of an anonymous text conversation">
+            <div className="preview-topline"><span> A LOOK INSIDE UNKNOWN</span><span>01 / TEXT CHAT</span></div>
+            <div className="preview-window">
+              <div className="preview-header">
+                <div className="preview-person"><span className="preview-avatar">?</span><span><b>Someone new</b><small><i/> Anonymous guest</small></span></div>
+                <span className="preview-session">PRIVATE SESSION</span>
+              </div>
+              <div className="preview-messages">
+                <div className="preview-day">A CONVERSATION STARTS HERE</div>
+                <div className="preview-message received"><small>Someone new</small><p>Hey, what’s something you’ve been curious about lately?</p></div>
+                <div className="preview-message sent"><small>You</small><p>Honestly, how people come up with their best ideas.</p></div>
+                <div className="preview-message received"><small>Someone new</small><p>That’s a good question to start with.</p></div>
+              </div>
+              <div className="preview-compose"><span>Write something kind...</span><span className="preview-send"><ArrowRight size={14}/></span></div>
+            </div>
+            <div className="preview-foot"><span><LockKeyhole size={13}/> No public profile</span><span><MessageCircle size={13}/> One-to-one conversation</span></div>
           </div>
         </section>
 
