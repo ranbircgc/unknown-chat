@@ -3,6 +3,8 @@ interface Env {
   MATCHMAKER: DurableObjectNamespace;
   SESSION_LIMITER: DurableObjectNamespace;
   APP_ORIGIN?: string;
+  ACCESS_TEAM_DOMAIN?: string;
+  ACCESS_AUD?: string;
 }
 
 interface SessionRow {
@@ -66,6 +68,45 @@ function originAllowed(request: Request, env: Env, url: URL) {
   return origin === (env.APP_ORIGIN ?? url.origin);
 }
 
+type AccessClaims = { iss?: string; aud?: string | string[]; exp?: number; nbf?: number; email?: string; sub?: string };
+let accessKeysCache: { expiresAt: number; keys: JsonWebKey[] } | null = null;
+function decodeBase64Url(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+async function verifyAccessJwt(request: Request, env: Env): Promise<AccessClaims | null> {
+  if (!env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) return null;
+  const token = request.headers.get("Cf-Access-Jwt-Assertion");
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { alg?: string; kid?: string };
+    const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as AccessClaims;
+    const issuer = env.ACCESS_TEAM_DOMAIN.replace(/\/$/, "");
+    const now = Math.floor(Date.now() / 1000);
+    if (header.alg !== "RS256" || !header.kid || claims.iss !== issuer || !claims.exp || claims.exp <= now || (claims.nbf && claims.nbf > now)) return null;
+    const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    if (!audiences.includes(env.ACCESS_AUD)) return null;
+    if (!accessKeysCache || accessKeysCache.expiresAt < Date.now()) {
+      const response = await fetch(issuer + "/cdn-cgi/access/certs", { headers: { accept: "application/json" } });
+      if (!response.ok) return null;
+      const data = await response.json() as { keys?: JsonWebKey[] };
+      if (!Array.isArray(data.keys)) return null;
+      accessKeysCache = { keys: data.keys, expiresAt: Date.now() + 5 * 60 * 1000 };
+    }
+    const jwk = accessKeysCache.keys.find((key) => (key as JsonWebKey & { kid?: string }).kid === header.kid);
+    if (!jwk) return null;
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, decodeBase64Url(parts[2]), new TextEncoder().encode(parts[0] + "." + parts[1]));
+    return valid ? claims : null;
+  } catch { return null; }
+}
+async function requireModerator(request: Request, env: Env) {
+  return verifyAccessJwt(request, env);
+}
+
 async function findSession(request: Request, env: Env): Promise<SessionRow | null> {
   const token = getCookie(request, SESSION_COOKIE);
   if (!token) return null;
@@ -102,6 +143,41 @@ export default {
       if (!origin || origin !== (env.APP_ORIGIN ?? url.origin)) return json({ error: "Origin not allowed" }, 403);
     } else if (!originAllowed(request, env, url)) {
       return json({ error: "Origin not allowed" }, 403);
+    }
+
+    if (url.pathname.startsWith("/api/admin/")) {
+      const moderator = await requireModerator(request, env);
+      if (!moderator) return json({ error: "Moderator authentication required" }, 401);
+      const reviewer = (moderator.email ?? moderator.sub ?? "moderator").slice(0, 254);
+      if (url.pathname === "/api/admin/reports" && request.method === "GET") {
+        const status = url.searchParams.get("status") ?? "pending";
+        if (!["pending", "reviewed", "dismissed", "all"].includes(status)) return json({ error: "Invalid status filter" }, 400);
+        const query = status === "all"
+          ? "SELECT id, reason, status, created_at, expires_at, reviewed_at, reviewer, resolution_code FROM conversation_reports ORDER BY created_at DESC LIMIT 100"
+          : "SELECT id, reason, status, created_at, expires_at, reviewed_at, reviewer, resolution_code FROM conversation_reports WHERE status = ? ORDER BY created_at ASC LIMIT 100";
+        const result = status === "all" ? await env.DB.prepare(query).all() : await env.DB.prepare(query).bind(status).all();
+        return json({ reports: result.results ?? [] });
+      }
+      const match = url.pathname.match(/^\/api\/admin\/reports\/([a-f0-9-]{36})\/action$/i);
+      if (match && request.method === "POST") {
+        let body: { action?: string; note?: string };
+        try { body = await request.json() as { action?: string; note?: string }; } catch { return json({ error: "Invalid JSON body" }, 400); }
+        const allowed = new Set(["reviewed", "actioned", "dismissed"]);
+        if (!body.action || !allowed.has(body.action)) return json({ error: "Invalid action" }, 400);
+        const note = typeof body.note === "string" ? body.note.trim().slice(0, 1000) : "";
+        const now = Math.floor(Date.now() / 1000);
+        const reportId = match[1];
+        const existing = await env.DB.prepare("SELECT id, status FROM conversation_reports WHERE id = ? LIMIT 1").bind(reportId).first<{ id: string; status: string }>();
+        if (!existing) return json({ error: "Report not found" }, 404);
+        await env.DB.batch([
+          env.DB.prepare("UPDATE conversation_reports SET status = ?, reviewer = ?, reviewed_at = ?, resolution_code = ?, moderator_note = ? WHERE id = ?")
+            .bind(body.action === "dismissed" ? "dismissed" : "reviewed", reviewer, now, body.action, note, reportId),
+          env.DB.prepare("INSERT INTO moderation_audit (id, report_id, reviewer, action, note, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(crypto.randomUUID(), reportId, reviewer, body.action, note, now),
+        ]);
+        return json({ ok: true, status: body.action === "dismissed" ? "dismissed" : "reviewed", reviewedAt: now });
+      }
+      return json({ error: "Not found" }, 404);
     }
 
     if (url.pathname === "/api/health" && request.method === "GET") {
