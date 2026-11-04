@@ -177,7 +177,6 @@ export class MatchmakerDO {
   }
 
   async webSocketError(socket: WebSocket) {
-    this.activity.delete(socket);
     this.closePeerRoom(socket);
   }
 
