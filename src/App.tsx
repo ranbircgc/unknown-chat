@@ -164,17 +164,30 @@ function App() {
   };
 
   const searchGifs = async () => {
-    const apiKey = import.meta.env.VITE_GIPHY_API_KEY as string | undefined;
-    if (!apiKey) { setGifError('GIF search is not configured yet.'); return; }
+    const apiKey = import.meta.env.VITE_GIPHY_API_KEY?.trim();
+    if (!apiKey) {
+      setGifError('GIF search is not configured on this deployment. Add VITE_GIPHY_API_KEY to Cloudflare Pages Production variables, then rebuild and redeploy.');
+      return;
+    }
     const query = gifQuery.trim().slice(0, 50);
-    if (!query) return;
-    setGifLoading(true); setGifError('');
+    if (!query) { setGifError('Enter a word to search for.'); return; }
+    setGifLoading(true);
+    setGifError('');
+    setGifResults([]);
     try {
       const url = new URL('https://api.giphy.com/v1/gifs/search');
       url.search = new URLSearchParams({ api_key: apiKey, q: query, limit: '12', rating: 'g', lang: 'en' }).toString();
       const response = await fetch(url);
-      if (!response.ok) throw new Error('GIF search is temporarily unavailable.');
-      const payload = await response.json() as { data?: Array<{ id: string; title?: string; images?: { fixed_height?: { url?: string }; fixed_height_small?: { url?: string } } }> };
+      const payload = await response.json() as {
+        data?: Array<{ id: string; title?: string; images?: { fixed_height?: { url?: string }; fixed_height_small?: { url?: string } } }>;
+        meta?: { status?: number; msg?: string };
+      };
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('GIPHY rejected the API key. Check that the key is valid and enabled, then rebuild the Pages deployment.');
+        }
+        throw new Error(payload.meta?.msg || `GIPHY search failed (HTTP ${response.status}). Try again shortly.`);
+      }
       const results = (payload.data || []).flatMap(item => {
         const full = item.images?.fixed_height?.url;
         const preview = item.images?.fixed_height_small?.url || full;
@@ -182,8 +195,13 @@ function App() {
       });
       setGifResults(results);
       if (!results.length) setGifError('No GIFs found. Try another search.');
-    } catch (error) { setGifError(error instanceof Error ? error.message : 'GIF search failed.'); }
-    finally { setGifLoading(false); }
+    } catch (error) {
+      setGifError(error instanceof TypeError
+        ? 'Could not reach GIPHY. Check your internet connection or content blockers.'
+        : error instanceof Error ? error.message : 'GIF search failed.');
+    } finally {
+      setGifLoading(false);
+    }
   };
 
   const toggleVoiceRecording = async () => {
@@ -191,8 +209,11 @@ function App() {
     if (connectionState !== 'connected' || socketRef.current?.readyState !== WebSocket.OPEN) {
       setNotice('Connect with a stranger before recording a voice note.'); return;
     }
+    if (!window.isSecureContext) {
+      setNotice('Microphone access requires HTTPS. Open UNKNOWN using its secure https:// address.'); return;
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setNotice('Voice recording is not supported in this browser.'); return;
+      setNotice('This browser does not support microphone recording. Try the latest Chrome or Safari.'); return;
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -223,7 +244,19 @@ function App() {
       recordingStartedAtRef.current = Date.now();
       setIsRecording(true);
       window.setTimeout(() => { if (recorder.state === 'recording') { recorder.stop(); setIsRecording(false); } }, 30_000);
-    } catch { setNotice('Microphone permission was denied or unavailable.'); setIsRecording(false); }
+    } catch (error) {
+      const name = error instanceof DOMException ? error.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        setNotice('Microphone access is blocked. Allow Microphone for this site in your browser settings, then reload UNKNOWN and try again.');
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setNotice('No microphone was found. Connect or enable a microphone, then try again.');
+      } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+        setNotice('Your microphone is busy or unavailable. Close other apps using it and try again.');
+      } else {
+        setNotice('Could not start the microphone. Check site permissions and your selected input device, then try again.');
+      }
+      setIsRecording(false);
+    }
   };
 
   const nextDemo = () => {
