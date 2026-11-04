@@ -151,7 +151,7 @@ export default {
       const reviewer = (moderator.email ?? moderator.sub ?? "moderator").slice(0, 254);
       if (url.pathname === "/api/admin/reports" && request.method === "GET") {
         const status = url.searchParams.get("status") ?? "pending";
-        if (!["pending", "reviewed", "actioned", "dismissed", "all"].includes(status)) return json({ error: "Invalid status filter" }, 400);
+        if (!["pending", "reviewed", "dismissed", "all"].includes(status)) return json({ error: "Invalid status filter" }, 400);
         const query = status === "all"
           ? "SELECT id, reason, status, created_at, expires_at, reviewed_at, reviewer, resolution_code FROM conversation_reports ORDER BY created_at DESC LIMIT 100"
           : "SELECT id, reason, status, created_at, expires_at, reviewed_at, reviewer, resolution_code FROM conversation_reports WHERE status = ? ORDER BY created_at ASC LIMIT 100";
@@ -171,11 +171,11 @@ export default {
         if (!existing) return json({ error: "Report not found" }, 404);
         await env.DB.batch([
           env.DB.prepare("UPDATE conversation_reports SET status = ?, reviewer = ?, reviewed_at = ?, resolution_code = ?, moderator_note = ? WHERE id = ?")
-            .bind(body.action, reviewer, now, body.action, note, reportId),
+            .bind(body.action === "dismissed" ? "dismissed" : "reviewed", reviewer, now, body.action, note, reportId),
           env.DB.prepare("INSERT INTO moderation_audit (id, report_id, reviewer, action, note, created_at) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(crypto.randomUUID(), reportId, reviewer, body.action, note, now),
         ]);
-        return json({ ok: true, status: body.action, reviewedAt: now });
+        return json({ ok: true, status: body.action === "dismissed" ? "dismissed" : "reviewed", reviewedAt: now });
       }
       return json({ error: "Not found" }, 404);
     }
