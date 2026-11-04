@@ -5,6 +5,9 @@ interface MatchAttachment {
   interests: string[];
   language: string;
   roomId: string | null;
+  rateWindowStartedAt?: number;
+  messageCount?: number;
+  typingCount?: number;
 }
 
 interface EventPayload {
@@ -12,16 +15,8 @@ interface EventPayload {
   text?: unknown;
 }
 
-interface MessageWindow {
-  startedAt: number;
-  messages: number;
-  typing: number;
-}
-
 export class MatchmakerDO {
   private readonly ctx: DurableObjectState;
-  private readonly activity = new Map<WebSocket, MessageWindow>();
-
   constructor(ctx: DurableObjectState) {
     this.ctx = ctx;
   }
@@ -60,7 +55,6 @@ export class MatchmakerDO {
 
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment(attachment);
-    this.activity.set(server, { startedAt: Date.now(), messages: 0, typing: 0 });
     this.tryMatch(server, attachment);
 
     return new Response(null, { status: 101, webSocket: client });
@@ -97,20 +91,22 @@ export class MatchmakerDO {
 
   private consume(socket: WebSocket, kind: "message" | "typing") {
     const now = Date.now();
-    const state = this.activity.get(socket) ?? { startedAt: now, messages: 0, typing: 0 };
-    if (now - state.startedAt >= 10_000) {
-      state.startedAt = now;
-      state.messages = 0;
-      state.typing = 0;
+    const attachment = socket.deserializeAttachment() as MatchAttachment | null;
+    if (!attachment) return false;
+    if (!attachment.rateWindowStartedAt || now - attachment.rateWindowStartedAt >= 10_000) {
+      attachment.rateWindowStartedAt = now;
+      attachment.messageCount = 0;
+      attachment.typingCount = 0;
     }
-    const key = kind === "message" ? "messages" : "typing";
+    const key = kind === "message" ? "messageCount" : "typingCount";
     const limit = kind === "message" ? 8 : 20;
-    if (state[key] >= limit) {
-      this.activity.set(socket, state);
+    const count = attachment[key] ?? 0;
+    if (count >= limit) {
+      socket.serializeAttachment(attachment);
       return false;
     }
-    state[key] += 1;
-    this.activity.set(socket, state);
+    attachment[key] = count + 1;
+    socket.serializeAttachment(attachment);
     return true;
   }
 
@@ -177,7 +173,6 @@ export class MatchmakerDO {
   }
 
   async webSocketClose(socket: WebSocket) {
-    this.activity.delete(socket);
     this.closePeerRoom(socket);
   }
 
