@@ -1,6 +1,7 @@
 interface Env {
   DB: D1Database;
   MATCHMAKER: DurableObjectNamespace;
+  SESSION_LIMITER: DurableObjectNamespace;
   APP_ORIGIN?: string;
 }
 
@@ -18,7 +19,15 @@ const NICKNAMES = ["QuietComet", "BlueEcho", "CuriousFox", "SilverOrbit", "Pixel
 function json(data: unknown, status = 200, headers: HeadersInit = {}) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
+      "x-frame-options": "DENY",
+      "cross-origin-resource-policy": "same-origin",
+      ...headers,
+    },
   });
 }
 
@@ -72,17 +81,41 @@ function createNickname() {
   return NICKNAMES[index];
 }
 
+async function allowSessionCreation(request: Request, env: Env) {
+  const ip = request.headers.get("CF-Connecting-IP");
+  if (!ip) return { allowed: false, retryAfter: 600 };
+  const key = await sha256(ip);
+  const id = env.SESSION_LIMITER.idFromName(key);
+  const response = await env.SESSION_LIMITER.get(id).fetch("https://rate-limit.internal/check", { method: "POST" });
+  if (!response.ok) return { allowed: false, retryAfter: 60 };
+  return response.json() as Promise<{ allowed: boolean; retryAfter: number }>;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return json({ error: "Not found" }, 404);
-    if (!originAllowed(request, env, url)) return json({ error: "Origin not allowed" }, 403);
+
+    const isWebSocket = url.pathname === "/api/chat" && request.headers.get("Upgrade")?.toLowerCase() === "websocket";
+    if (isWebSocket) {
+      const origin = request.headers.get("Origin");
+      if (!origin || origin !== (env.APP_ORIGIN ?? url.origin)) return json({ error: "Origin not allowed" }, 403);
+    } else if (!originAllowed(request, env, url)) {
+      return json({ error: "Origin not allowed" }, 403);
+    }
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({ status: "ok", service: "unknown-api", mode: "prototype" });
     }
 
     if (url.pathname === "/api/sessions" && request.method === "POST") {
+      const limit = await allowSessionCreation(request, env);
+      if (!limit.allowed) {
+        return json({ error: "Too many session attempts. Please wait before trying again." }, 429, {
+          "retry-after": String(limit.retryAfter),
+        });
+      }
+
       let body: { ageAttested?: boolean };
       try { body = await request.json() as { ageAttested?: boolean }; }
       catch { return json({ error: "Invalid JSON body" }, 400); }
@@ -121,14 +154,14 @@ export default {
       return json({ ok: true }, 200, { "set-cookie": clearCookie(url) });
     }
 
-    if (url.pathname === "/api/chat" && request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
+    if (isWebSocket) {
       const session = await findSession(request, env);
       if (!session) return json({ error: "A valid guest session is required" }, 401);
 
       const mode = url.searchParams.get("mode") === "interests" ? "interests" : "random";
       const language = (url.searchParams.get("language") ?? "Any language").slice(0, 24);
       const interests = (url.searchParams.get("interests") ?? "")
-        .split(",").map((item) => item.trim()).filter(Boolean).slice(0, 5);
+        .split(",").map((item) => item.trim().slice(0, 40)).filter(Boolean).slice(0, 5);
 
       const id = env.MATCHMAKER.idFromName("global-matchmaker");
       const stub = env.MATCHMAKER.get(id);
@@ -146,3 +179,4 @@ export default {
 };
 
 export { MatchmakerDO } from "./matchmaker";
+export { RateLimiterDO } from "./rate-limiter";
