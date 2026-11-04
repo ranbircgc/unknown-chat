@@ -158,7 +158,7 @@ export default {
         const result = status === "all" ? await env.DB.prepare(query).all() : await env.DB.prepare(query).bind(status).all();
         return json({ reports: result.results ?? [] });
       }
-      const match = url.pathname.match(/^\\/api\\/admin\\/reports\\/([a-f0-9-]{36})\\/action$/i);
+      const match = url.pathname.match(/^\/api\/admin\/reports\/([a-f0-9-]{36})\/action$/i);
       if (match && request.method === "POST") {
         let body: { action?: string; note?: string };
         try { body = await request.json() as { action?: string; note?: string }; } catch { return json({ error: "Invalid JSON body" }, 400); }
