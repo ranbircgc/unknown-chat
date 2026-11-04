@@ -29,12 +29,12 @@ function App() {
   useEffect(() => { localStorage.setItem('unknown-theme', theme); }, [theme]);
   useEffect(() => {
     if (screen === 'home' && pendingSection) {
-      document.getElementById(pendingSection)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById(pendingSection)?.scrollIntoView({ behavior: 'auto', block: 'start' });
       setPendingSection(null);
     }
   }, [screen, pendingSection]);
   const navigateSection = (section: string) => {
-    if (screen === 'home') document.getElementById(section)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (screen === 'home') document.getElementById(section)?.scrollIntoView({ behavior: 'auto', block: 'start' });
     else { setPendingSection(section); setScreen('home'); }
   };
 
