@@ -8,13 +8,19 @@ interface MatchAttachment {
   rateWindowStartedAt?: number;
   messageCount?: number;
   typingCount?: number;
+  voiceCount?: number;
   reportedRoomId?: string | null;
+  pendingVoice?: { roomId: string; mimeType: string; durationMs: number; createdAt: number } | null;
 }
 
 interface EventPayload {
   type?: unknown;
   text?: unknown;
   reason?: unknown;
+  url?: unknown;
+  alt?: unknown;
+  mimeType?: unknown;
+  durationMs?: unknown;
 }
 
 interface Env {
@@ -102,7 +108,7 @@ export class MatchmakerDO {
     socket.send(JSON.stringify({ type: "queue.waiting", message: "Looking for someone to talk to…" }));
   }
 
-  private consume(socket: WebSocket, kind: "message" | "typing") {
+  private consume(socket: WebSocket, kind: "message" | "typing" | "voice") {
     const now = Date.now();
     const attachment = socket.deserializeAttachment() as MatchAttachment | null;
     if (!attachment) return false;
@@ -111,8 +117,8 @@ export class MatchmakerDO {
       attachment.messageCount = 0;
       attachment.typingCount = 0;
     }
-    const key = kind === "message" ? "messageCount" : "typingCount";
-    const limit = kind === "message" ? 8 : 20;
+    const key = kind === "message" ? "messageCount" : kind === "typing" ? "typingCount" : "voiceCount";
+    const limit = kind === "message" ? 8 : kind === "typing" ? 20 : 2;
     const count = attachment[key] ?? 0;
     if (count >= limit) {
       socket.serializeAttachment(attachment);
@@ -124,7 +130,26 @@ export class MatchmakerDO {
   }
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
-    if (typeof message !== "string" || message.length > 5000) {
+    if (typeof message !== "string") {
+      const attachment = socket.deserializeAttachment() as MatchAttachment | null;
+      const pending = attachment?.pendingVoice;
+      const peer = this.ctx.getWebSockets().find((candidate) => {
+        if (candidate === socket || candidate.readyState !== WebSocket.READY_STATE_OPEN) return false;
+        const data = candidate.deserializeAttachment() as MatchAttachment | null;
+        return Boolean(pending && pending.roomId === attachment?.roomId && data?.roomId === pending.roomId);
+      });
+      if (!attachment || !pending || !peer || !(message instanceof ArrayBuffer) || message.byteLength < 1 || message.byteLength > 1_500_000 || Date.now() - pending.createdAt > 10_000) {
+        if (attachment) socket.serializeAttachment({ ...attachment, pendingVoice: null });
+        socket.send(JSON.stringify({ type: "error", message: "Voice note was invalid or expired." }));
+        return;
+      }
+      socket.serializeAttachment({ ...attachment, pendingVoice: null });
+      peer.send(JSON.stringify({ type: "voice.new", mimeType: pending.mimeType, durationMs: pending.durationMs, size: message.byteLength, sentAt: Date.now() }));
+      peer.send(message);
+      socket.send(JSON.stringify({ type: "voice.sent", sentAt: Date.now() }));
+      return;
+    }
+    if (message.length > 5000) {
       socket.send(JSON.stringify({ type: "error", message: "Invalid message payload." }));
       return;
     }
@@ -160,6 +185,47 @@ export class MatchmakerDO {
         return;
       }
       peer.send(JSON.stringify({ type: "message.new", text, sender: attachment.nickname, sentAt: Date.now() }));
+      return;
+    }
+
+    if (event.type === "gif.send") {
+      if (!this.consume(socket, "message")) {
+        socket.send(JSON.stringify({ type: "error", message: "You're sending media too quickly. Please slow down." }));
+        return;
+      }
+      if (!attachment.roomId || !peer) {
+        socket.send(JSON.stringify({ type: "error", message: "You are not in an active chat." }));
+        return;
+      }
+      const rawUrl = typeof event.url === "string" ? event.url : "";
+      let gifUrl: URL;
+      try { gifUrl = new URL(rawUrl); } catch { socket.send(JSON.stringify({ type: "error", message: "Invalid GIF URL." })); return; }
+      if (gifUrl.protocol !== "https:" || !(gifUrl.hostname === "giphy.com" || gifUrl.hostname.endsWith(".giphy.com")) || rawUrl.length > 2048) {
+        socket.send(JSON.stringify({ type: "error", message: "Only approved GIPHY media links can be sent." }));
+        return;
+      }
+      const alt = typeof event.alt === "string" ? event.alt.trim().slice(0, 120) : "GIF";
+      peer.send(JSON.stringify({ type: "gif.new", url: gifUrl.toString(), alt, sender: attachment.nickname, sentAt: Date.now() }));
+      return;
+    }
+
+    if (event.type === "voice.begin") {
+      if (!this.consume(socket, "voice")) {
+        socket.send(JSON.stringify({ type: "error", message: "Please wait before sending another voice note." }));
+        return;
+      }
+      const mimeType = typeof event.mimeType === "string" ? event.mimeType : "";
+      const durationMs = typeof event.durationMs === "number" ? event.durationMs : 0;
+      if (!attachment.roomId || !peer) {
+        socket.send(JSON.stringify({ type: "error", message: "You are not in an active chat." }));
+        return;
+      }
+      if (!["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].includes(mimeType) || !Number.isFinite(durationMs) || durationMs < 500 || durationMs > 30_000) {
+        socket.send(JSON.stringify({ type: "error", message: "Voice notes must be 0.5 to 30 seconds in a supported audio format." }));
+        return;
+      }
+      socket.serializeAttachment({ ...attachment, pendingVoice: { roomId: attachment.roomId, mimeType, durationMs, createdAt: Date.now() } });
+      socket.send(JSON.stringify({ type: "voice.ready" }));
       return;
     }
 
