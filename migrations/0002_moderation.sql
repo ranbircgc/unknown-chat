@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS conversation_reports (
     'Other'
   )),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'dismissed')),
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_conversation_reports_status_created
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS user_blocks (
   blocker_session_id TEXT NOT NULL,
   blocked_session_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
   PRIMARY KEY (blocker_session_id, blocked_session_id),
   CHECK (blocker_session_id <> blocked_session_id)
 );
