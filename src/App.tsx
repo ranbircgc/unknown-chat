@@ -53,17 +53,32 @@ function App() {
   const toggleInterest = (item: string) => setSelected(current => current.includes(item) ? current.filter(x => x !== item) : current.length < 5 ? [...current, item] : current);
   const connectSocket = (activeMode: Mode) => {
     socketRef.current?.close();
+    pendingVoiceRef.current = null;
     setConnectionState('connecting');
     setMessages([]);
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const params = new URLSearchParams({ mode: activeMode, language, interests: selected.join(',') });
     const socket = new WebSocket(`${protocol}//${window.location.host}/api/chat?${params.toString()}`);
     socketRef.current = socket;
+    socket.binaryType = 'blob';
     socket.onopen = () => setConnectionState('waiting');
     socket.onmessage = event => {
+      if (event.data instanceof Blob) {
+        const pending = pendingVoiceRef.current;
+        if (!pending) return;
+        pendingVoiceRef.current = null;
+        const mediaUrl = URL.createObjectURL(event.data);
+        setMessages(current => [...current, { from: 'them', text: 'Voice note', kind: 'voice', mediaUrl, durationMs: pending.durationMs, time: 'Now' }]);
+        return;
+      }
       let data: ServerEvent;
       try { data = JSON.parse(String(event.data)) as ServerEvent; } catch { return; }
-      if (data.type === 'queue.waiting') {
+      if (data.type === 'voice.new') {
+        pendingVoiceRef.current = { mimeType: (data as ServerEvent & { mimeType?: string }).mimeType || 'audio/webm', durationMs: (data as ServerEvent & { durationMs?: number }).durationMs || 0 };
+      } else if (data.type === 'gif.new') {
+        const media = data as ServerEvent & { url?: string; alt?: string };
+        if (media.url) setMessages(current => [...current, { from: 'them', text: media.alt || 'GIF', kind: 'gif', mediaUrl: media.url, time: 'Now' }]);
+      } else if (data.type === 'queue.waiting') {
         setConnectionState('waiting');
         setNotice('Looking for someone. Keep this page open.');
       } else if (data.type === 'match.found') {

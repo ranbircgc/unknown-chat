@@ -146,7 +146,7 @@ export class MatchmakerDO {
         return;
       }
       socket.serializeAttachment({ ...attachment, pendingVoice: null });
-      peer.send(JSON.stringify({ type: "voice.new", mimeType: pending.mimeType, durationMs: pending.durationMs, size: message.byteLength, sentAt: Date.now() }));
+      peer.send(JSON.stringify({ type: "voice.new", mimeType: pending.mimeType, durationMs: pending.durationMs, size: byteLength, sentAt: Date.now() }));
       peer.send(message);
       socket.send(JSON.stringify({ type: "voice.sent", sentAt: Date.now() }));
       return;
