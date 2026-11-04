@@ -117,3 +117,8 @@ body,.app-shell{background:#111210;color:#f2f0e9}
 .block-warning{background:#20211d;border-radius:3px}
 button,a{scroll-behavior:auto}
 @media(prefers-reduced-motion:no-preference){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Motion is intentionally absent across the product. */
+html{scroll-behavior:auto!important}
+*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+button:hover,.button-primary:hover,.nav-cta:hover,.button-secondary:hover{transform:none!important;filter:none!important}
