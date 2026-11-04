@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, MessageCircle, Users, LockKeyhole, Globe2, Heart, Zap, X, Flag, Ban, Send, ChevronLeft, Check, Shuffle, SlidersHorizontal } from 'lucide-react';
 
 type Screen = 'home' | 'setup' | 'chat';
@@ -6,11 +6,8 @@ type Mode = 'random' | 'interests';
 
 const interests = ['Technology', 'AI & ML', 'Gaming', 'Music', 'Movies', 'Anime', 'Travel', 'Food', 'Fitness', 'Books', 'Philosophy', 'Startups', 'Memes', 'Deep talks', 'Just bored'];
 
-const starterMessages = [
-  { from: 'them', text: 'Hey! What’s something you’ve been curious about lately?', time: 'Just now' },
-  { from: 'me', text: 'Honestly, how people end up choosing completely different paths in life.', time: 'Just now' },
-  { from: 'them', text: 'That’s a good one. I think a lot of it comes down to the people we meet.' , time: 'Just now' },
-];
+type ChatMessage = { from: 'me' | 'them'; text: string; time: string };
+type ServerEvent = { type?: string; message?: string; text?: string; sentAt?: number; reason?: string };
 
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -18,28 +15,103 @@ function App() {
   const [selected, setSelected] = useState<string[]>(['Technology', 'Music']);
   const [language, setLanguage] = useState('Any language');
   const [ageConfirmed, setAgeConfirmed] = useState(false);
-  const [messages, setMessages] = useState(starterMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'waiting' | 'connected' | 'error'>('idle');
+  const [nickname, setNickname] = useState('Unknown');
+  const socketRef = useRef<WebSocket | null>(null);
   const [draft, setDraft] = useState('');
   const [modal, setModal] = useState<'report' | 'block' | null>(null);
   const [notice, setNotice] = useState('');
 
   const startSetup = (nextMode: Mode) => { setMode(nextMode); setScreen('setup'); window.scrollTo(0, 0); };
   const toggleInterest = (item: string) => setSelected(current => current.includes(item) ? current.filter(x => x !== item) : current.length < 5 ? [...current, item] : current);
-  const enterDemo = () => {
+  const connectSocket = (activeMode: Mode) => {
+    socketRef.current?.close();
+    setConnectionState('connecting');
+    setMessages([]);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const params = new URLSearchParams({ mode: activeMode, language, interests: selected.join(',') });
+    const socket = new WebSocket(`${protocol}//${window.location.host}/api/chat?${params.toString()}`);
+    socketRef.current = socket;
+    socket.onopen = () => setConnectionState('waiting');
+    socket.onmessage = event => {
+      let data: ServerEvent;
+      try { data = JSON.parse(String(event.data)) as ServerEvent; } catch { return; }
+      if (data.type === 'queue.waiting') {
+        setConnectionState('waiting');
+        setNotice('Looking for someone. Keep this page open.');
+      } else if (data.type === 'match.found') {
+        setConnectionState('connected');
+        setNotice('');
+      } else if (data.type === 'message.new') {
+        setMessages(current => [...current, { from: 'them', text: data.text || '', time: data.sentAt ? new Date(data.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Now' }]);
+      } else if (data.type === 'room.closed') {
+        setConnectionState('waiting');
+        setNotice(data.reason || 'The conversation ended.');
+      } else if (data.type === 'error') {
+        setNotice(data.message || 'Something went wrong.');
+      }
+    };
+    socket.onerror = () => {
+      setConnectionState('error');
+      setNotice('Could not connect. Check that the backend and /api proxy are configured.');
+    };
+    socket.onclose = () => {
+      if (socketRef.current === socket) setConnectionState('idle');
+    };
+  };
+
+  const enterDemo = async () => {
     if (!ageConfirmed) { setNotice('Please confirm that you are 18 or older to continue.'); return; }
     if (mode === 'interests' && selected.length === 0) { setNotice('Choose at least one interest, or switch to random chat.'); return; }
-    setNotice('');
-    setMessages(starterMessages);
     setScreen('chat');
+    setConnectionState('connecting');
+    setNotice('Creating your temporary guest session…');
+    try {
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ageAttested: true }),
+      });
+      const payload = await response.json() as { session?: { nickname?: string }; error?: string };
+      if (!response.ok) throw new Error(payload.error || 'Could not create a guest session.');
+      setNickname(payload.session?.nickname || 'Unknown');
+      setNotice('Session created. Finding a conversation…');
+      connectSocket(mode);
+    } catch (error) {
+      setConnectionState('error');
+      setNotice(error instanceof Error ? error.message : 'Backend unavailable. Configure the API proxy.');
+    }
   };
+
   const sendMessage = () => {
     const value = draft.trim();
-    if (!value) return;
-    setMessages(current => [...current, { from: 'me', text: value.slice(0, 2000), time: 'Now' }]);
+    if (!value || value.length > 2000) return;
+    if (socketRef.current?.readyState !== WebSocket.OPEN || connectionState !== 'connected') {
+      setNotice('You can send messages after a stranger connects.');
+      return;
+    }
+    socketRef.current.send(JSON.stringify({ type: 'message.send', text: value }));
+    setMessages(current => [...current, { from: 'me', text: value, time: 'Now' }]);
     setDraft('');
   };
-  const nextDemo = () => { setMessages([{ from: 'them', text: 'Hi there. What brings you here today?', time: 'Just now' }]); setNotice('Demo only — live stranger matching is not connected yet.'); };
-  const leaveChat = () => { setScreen('home'); setNotice(''); };
+
+  const nextDemo = () => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: 'room.end' }));
+    connectSocket(mode);
+  };
+
+  const leaveChat = () => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: 'room.end' }));
+    socketRef.current?.close();
+    socketRef.current = null;
+    setConnectionState('idle');
+    setScreen('home');
+    setNotice('');
+  };
+
+  useEffect(() => () => { socketRef.current?.close(); }, []);
 
   return (
     <div className="app-shell">
@@ -104,16 +176,16 @@ function App() {
           <label className="age-check"><input type="checkbox" checked={ageConfirmed} onChange={e => setAgeConfirmed(e.target.checked)}/><span>I confirm that I am 18 years of age or older.</span></label>
           {notice && <p className="inline-notice">{notice}</p>}
           <button className="button-primary full-button" onClick={enterDemo}>Continue <ArrowRight size={17}/></button>
-          <p className="fine-print"><LockKeyhole size={12}/> This prototype does not verify age or connect to live users.</p>
+          <p className="fine-print"><LockKeyhole size={12}/> Age confirmation is self-attestation, not age verification.</p>
         </div>
       </main>}
 
       {screen === 'chat' && <main className="chat-page">
-        <div className="demo-banner"><span className="demo-pill">PROTOTYPE</span> This is a UI preview with simulated messages. Live matching is not connected.</div>
+        <div className="demo-banner"><span className="demo-pill">{connectionState.toUpperCase()}</span> {connectionState === "waiting" ? "Waiting for another person to join…" : connectionState === "connected" ? "You are connected. Be respectful and protect your privacy." : connectionState === "error" ? "Connection unavailable." : "Connecting to UNKNOWN chat…"}</div>
         <div className="chat-layout">
-          <aside className="chat-sidebar"><button className="back-link" onClick={leaveChat}><ChevronLeft size={16}/> Exit chat</button><div className="sidebar-label">YOUR SESSION</div><div className="session-card"><div className="session-avatar">U</div><div><b>You are Unknown</b><small>Guest session · Temporary</small></div></div><div className="sidebar-label">YOUR PREFERENCES</div><div className="preference-line"><Globe2 size={15}/>{language}</div><div className="preference-line"><Sparkles size={15}/>{mode === 'random' ? 'Random matching' : selected.slice(0, 3).join(', ')}</div><div className="privacy-note"><LockKeyhole size={16}/><span><b>Keep it personal, not identifiable.</b><small>Don't share passwords, addresses, or financial details.</small></span></div></aside>
-          <section className="chat-panel"><div className="chat-header"><div className="stranger-avatar">?</div><div className="stranger-info"><b>Someone new</b><small><span className="live-dot"/> Connected in demo</small></div><div className="chat-actions"><button title="Report" onClick={() => setModal('report')}><Flag size={16}/></button><button title="Block" onClick={() => setModal('block')}><Ban size={16}/></button><button className="next-button" onClick={nextDemo}><Shuffle size={14}/> Next stranger</button></div></div>
-            <div className="message-area"><div className="chat-date">A NEW CONVERSATION</div><div className="conversation-hint">You both arrived as strangers.<br/>Keep it kind. Keep it curious.</div>{messages.map((m, i) => <div key={i} className={m.from === 'me' ? 'message-row mine' : 'message-row'}><div className="message-avatar">{m.from === 'me' ? 'U' : '?'}</div><div className="message-content"><div className="message-meta">{m.from === 'me' ? 'You' : 'Someone new'} <span>{m.time}</span></div><div className="message-bubble">{m.text}</div></div></div>)}</div>
+          <aside className="chat-sidebar"><button className="back-link" onClick={leaveChat}><ChevronLeft size={16}/> Exit chat</button><div className="sidebar-label">YOUR SESSION</div><div className="session-card"><div className="session-avatar">U</div><div><b>You are {nickname}</b><small>Guest session · Temporary</small></div></div><div className="sidebar-label">YOUR PREFERENCES</div><div className="preference-line"><Globe2 size={15}/>{language}</div><div className="preference-line"><Sparkles size={15}/>{mode === 'random' ? 'Random matching' : selected.slice(0, 3).join(', ')}</div><div className="privacy-note"><LockKeyhole size={16}/><span><b>Keep it personal, not identifiable.</b><small>Don't share passwords, addresses, or financial details.</small></span></div></aside>
+          <section className="chat-panel"><div className="chat-header"><div className="stranger-avatar">?</div><div className="stranger-info"><b>Someone new</b><small><span className="live-dot"/> {connectionState === "connected" ? "Connected" : connectionState === "waiting" ? "Finding a stranger" : "Connecting"}</small></div><div className="chat-actions"><button title="Report" onClick={() => setModal('report')}><Flag size={16}/></button><button title="Block" onClick={() => setModal('block')}><Ban size={16}/></button><button className="next-button" onClick={nextDemo}><Shuffle size={14}/> Next stranger</button></div></div>
+            <div className="message-area"><div className="chat-date">A NEW CONVERSATION</div><div className="conversation-hint">{connectionState === "waiting" ? "Your next conversation is just around the corner." : "You both arrived as strangers. Keep it kind. Keep it curious."}</div>{messages.map((m, i) => <div key={i} className={m.from === 'me' ? 'message-row mine' : 'message-row'}><div className="message-avatar">{m.from === 'me' ? 'U' : '?'}</div><div className="message-content"><div className="message-meta">{m.from === 'me' ? 'You' : 'Someone new'} <span>{m.time}</span></div><div className="message-bubble">{m.text}</div></div></div>)}</div>
             <div className="composer"><textarea value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder="Write something kind..." rows={1}/><span>{draft.length}/2000</span><button onClick={sendMessage} disabled={!draft.trim()} aria-label="Send message"><Send size={17}/></button></div><div className="chat-bottom-note"><LockKeyhole size={12}/> Never share sensitive personal information.</div>
           </section>
         </div>
@@ -122,7 +194,7 @@ function App() {
 
       <footer className="footer"><div className="footer-brand"><span className="brand-mark">U</span><b>UNKNOWN<span className="brand-period">.</span></b></div><span>Talk freely. Stay unknown.</span><div className="footer-links"><a href="#safety">Safety</a><a href="#about">Guidelines</a><a href="mailto:hello@unknown.example">Contact</a></div><small>© 2026 UNKNOWN. Built for better conversations.</small></footer>
 
-      {modal && <div className="modal-backdrop" onClick={() => setModal(null)}><div className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)}><X size={18}/></button><div className="modal-icon">{modal === 'report' ? <Flag size={21}/> : <Ban size={21}/>}</div><h3>{modal === 'report' ? 'Report this conversation' : 'Block this person?'}</h3><p>{modal === 'report' ? 'Choose a reason. In the live product, this will be sent to the moderation team.' : 'In the live product, blocking will prevent this person from matching with you again.'}</p>{modal === 'report' ? <select className="report-select"><option>Harassment or bullying</option><option>Threats or violence</option><option>Hate speech</option><option>Sexual harassment or exploitation</option><option>Scam or spam</option><option>Sharing private information</option><option>Other</option></select> : <div className="block-warning">You can leave without explaining why.</div>}<div className="modal-actions"><button className="button-secondary" onClick={() => setModal(null)}>Cancel</button><button className="button-primary" onClick={() => { setModal(null); setNotice(modal === 'report' ? 'Demo only — reports are not submitted yet.' : 'Demo only — blocking is not connected yet.'); }}>{modal === 'report' ? 'Submit report' : 'Block & leave'}</button></div></div></div>}
+      {modal && <div className="modal-backdrop" onClick={() => setModal(null)}><div className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)}><X size={18}/></button><div className="modal-icon">{modal === 'report' ? <Flag size={21}/> : <Ban size={21}/>}</div><h3>{modal === 'report' ? 'Report this conversation' : 'Block this person?'}</h3><p>{modal === 'report' ? 'Choose a reason. Reporting is not available yet. Please leave the chat if you feel unsafe.' : 'Blocking is not implemented yet. You can leave this conversation immediately.'}</p>{modal === 'report' ? <select className="report-select"><option>Harassment or bullying</option><option>Threats or violence</option><option>Hate speech</option><option>Sexual harassment or exploitation</option><option>Scam or spam</option><option>Sharing private information</option><option>Other</option></select> : <div className="block-warning">You can leave without explaining why.</div>}<div className="modal-actions"><button className="button-secondary" onClick={() => setModal(null)}>Cancel</button><button className="button-primary" onClick={() => { setModal(null); setNotice(modal === 'report' ? 'Reports are not connected yet. Please leave if you feel unsafe.' : 'Blocking is not connected yet. Leaving this chat instead.'); }}>{modal === 'report' ? 'Submit report' : 'Block & leave'}</button></div></div></div>}
     </div>
   );
 }
