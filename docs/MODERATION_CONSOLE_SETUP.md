@@ -18,3 +18,7 @@ The console is served at `/moderation.html` and calls authenticated `/api/admin/
 
 ## Deployment gate
 Do not deploy the admin route until Access is configured and the Worker vars are set. Without them the endpoints fail closed with 401. Do not add a public bypass or hard-coded admin email allowlist.
+
+## Build validation note
+
+The pull-request GitHub Actions workflow validates the frontend production build and performs a Wrangler Worker dry run. Cloudflare Worker Preview deployments are a separate optional preview environment; disabling branch preview builds does not disable the production Worker deployment. Before production release, deploy the Worker through the production deployment workflow and verify its health endpoint and required bindings independently.
