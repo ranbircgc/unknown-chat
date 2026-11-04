@@ -84,7 +84,7 @@ async function verifyAccessJwt(request: Request, env: Env): Promise<AccessClaims
   try {
     const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { alg?: string; kid?: string };
     const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as AccessClaims;
-    const issuer = env.ACCESS_TEAM_DOMAIN.replace(/\\/$/, "");
+    const issuer = env.ACCESS_TEAM_DOMAIN.replace(/\/$/, "");
     const now = Math.floor(Date.now() / 1000);
     if (header.alg !== "RS256" || !header.kid || claims.iss !== issuer || !claims.exp || claims.exp <= now || (claims.nbf && claims.nbf > now)) return null;
     const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
