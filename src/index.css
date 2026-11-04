@@ -179,3 +179,25 @@ button:hover,.button-primary:hover,.nav-cta:hover,.button-secondary:hover{transf
 @keyframes unknown-panel-enter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 @keyframes unknown-message-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.live-dot,.preview-window,.message-row{animation:none!important}}
+
+
+/* Ephemeral media controls */
+.composer .media-tool{width:34px;height:34px;flex:0 0 34px;background:transparent;color:#d7a66a;border:1px solid #55564d;border-radius:3px;display:grid;place-items:center}
+.composer .media-tool:hover{background:#292a25}
+.composer .media-tool:disabled{opacity:.45}
+.gif-picker{margin:0 18px 10px;padding:12px;border:1px solid #55564d;background:#191a17}
+.gif-search-row{display:flex;gap:8px}
+.gif-search-row input{flex:1;min-width:0;background:#171814;color:#f2f0e9;border:1px solid #65665c;padding:9px;font-size:12px}
+.gif-search-row button{width:34px;border:1px solid #65665c;background:#292a25;color:#d7a66a;display:grid;place-items:center}
+.gif-error{font-size:11px;color:#d7a66a}
+.gif-results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:10px;max-height:230px;overflow:auto}
+.gif-results button{padding:0;border:1px solid #45463d;background:#111210;cursor:pointer;min-width:0}
+.gif-results img{display:block;width:100%;height:76px;object-fit:cover}
+.giphy-credit{font-size:9px;color:#9a998e;text-align:right;margin-top:9px;letter-spacing:.04em}
+.chat-gif{display:block;width:min(100%,300px);max-height:240px;object-fit:contain}
+.chat-audio{display:block;width:min(100%,280px);height:38px}
+@media(max-width:620px){.gif-picker{margin:0 10px 10px}.gif-results{grid-template-columns:repeat(3,minmax(0,1fr))}.gif-results img{height:70px}.composer{gap:6px}.composer .media-tool{width:31px;flex-basis:31px}.composer>span{display:none}}
+.theme-light .gif-picker{background:#f4f1e8;border-color:#b8b3a6}
+.theme-light .gif-search-row input{background:#fff;color:#24251f;border-color:#b8b3a6}
+.theme-light .gif-search-row button{background:#ebe8de;color:#98652d;border-color:#b8b3a6}
+.theme-light .gif-results button{background:#fff;border-color:#d1ccbf}

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sun, Moon, ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, MessageCircle, Users, UserRound, LockKeyhole, Globe2, Heart, Zap, X, Flag, Ban, Send, ChevronLeft, Check, Shuffle, SlidersHorizontal } from 'lucide-react';
+import { Sun, Moon, ArrowRight, ArrowUpRight, ShieldCheck, Sparkles, MessageCircle, Users, UserRound, LockKeyhole, Globe2, Heart, Zap, X, Flag, Ban, Send, ChevronLeft, Check, Shuffle, SlidersHorizontal, Mic, Square, Image, Search } from 'lucide-react';
 
 type Screen = 'home' | 'setup' | 'chat';
 type Mode = 'random' | 'interests';
 
 const interests = ['Technology', 'AI & ML', 'Gaming', 'Music', 'Movies', 'Anime', 'Travel', 'Food', 'Fitness', 'Books', 'Philosophy', 'Startups', 'Memes', 'Deep talks', 'Just bored'];
 
-type ChatMessage = { from: 'me' | 'them'; text: string; time: string };
+type ChatMessage = { from: 'me' | 'them'; text: string; time: string; kind?: 'text' | 'gif' | 'voice'; mediaUrl?: string; durationMs?: number };
 type ServerEvent = { type?: string; message?: string; text?: string; sentAt?: number; reason?: string; stranger?: { nickname?: string } };
 
 function App() {
@@ -19,6 +19,17 @@ function App() {
   const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'waiting' | 'connected' | 'error'>('idle');
   const [nickname, setNickname] = useState('Unknown');
   const socketRef = useRef<WebSocket | null>(null);
+  const pendingVoiceRef = useRef<{ mimeType: string; durationMs: number } | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<BlobPart[]>([]);
+  const recordingStartedAtRef = useRef(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifQuery, setGifQuery] = useState('');
+  const [gifResults, setGifResults] = useState<Array<{ id: string; title: string; url: string; preview: string }>>([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [gifError, setGifError] = useState('');
   const [draft, setDraft] = useState('');
   const [modal, setModal] = useState<'report' | 'block' | null>(null);
   const [reportReason, setReportReason] = useState('Harassment or bullying');
@@ -130,6 +141,76 @@ function App() {
     setDraft('');
   };
 
+  const sendGif = (gif: { id: string; title: string; url: string; preview: string }) => {
+    if (socketRef.current?.readyState !== WebSocket.OPEN || connectionState !== 'connected') return;
+    socketRef.current.send(JSON.stringify({ type: 'gif.send', url: gif.url, alt: gif.title || 'GIF' }));
+    setMessages(current => [...current, { from: 'me', text: gif.title || 'GIF', kind: 'gif', mediaUrl: gif.url, time: 'Now' }]);
+    setShowGifPicker(false);
+  };
+
+  const searchGifs = async () => {
+    const apiKey = import.meta.env.VITE_GIPHY_API_KEY as string | undefined;
+    if (!apiKey) { setGifError('GIF search is not configured yet.'); return; }
+    const query = gifQuery.trim().slice(0, 50);
+    if (!query) return;
+    setGifLoading(true); setGifError('');
+    try {
+      const url = new URL('https://api.giphy.com/v1/gifs/search');
+      url.search = new URLSearchParams({ api_key: apiKey, q: query, limit: '12', rating: 'g', lang: 'en' }).toString();
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('GIF search is temporarily unavailable.');
+      const payload = await response.json() as { data?: Array<{ id: string; title?: string; images?: { fixed_height?: { url?: string }; fixed_height_small?: { url?: string } } }> };
+      const results = (payload.data || []).flatMap(item => {
+        const full = item.images?.fixed_height?.url;
+        const preview = item.images?.fixed_height_small?.url || full;
+        return full && preview ? [{ id: item.id, title: item.title || 'GIF', url: full, preview }] : [];
+      });
+      setGifResults(results);
+      if (!results.length) setGifError('No GIFs found. Try another search.');
+    } catch (error) { setGifError(error instanceof Error ? error.message : 'GIF search failed.'); }
+    finally { setGifLoading(false); }
+  };
+
+  const toggleVoiceRecording = async () => {
+    if (isRecording) { recorderRef.current?.stop(); setIsRecording(false); return; }
+    if (connectionState !== 'connected' || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setNotice('Connect with a stranger before recording a voice note.'); return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setNotice('Voice recording is not supported in this browser.'); return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+      if (!mimeType) { stream.getTracks().forEach(track => track.stop()); setNotice('This browser does not support the required audio format.'); return; }
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorderRef.current = recorder;
+      recorder.ondataavailable = event => { if (event.data.size) recordingChunksRef.current.push(event.data); };
+      recorder.onstop = async () => {
+        const blob = new Blob(recordingChunksRef.current, { type: mimeType });
+        stream.getTracks().forEach(track => track.stop());
+        recordingStreamRef.current = null;
+        if (blob.size < 1 || blob.size > 1_500_000) { setNotice('Voice note is empty or exceeds the 1.5 MB limit.'); return; }
+        const socket = socketRef.current;
+        if (!socket || socket.readyState !== WebSocket.OPEN || connectionState !== 'connected') { setNotice('Chat ended before the voice note could be sent.'); return; }
+        const durationMs = Math.min(30_000, Math.max(500, Date.now() - recordingStartedAtRef.current));
+        socket.send(JSON.stringify({ type: 'voice.begin', mimeType, durationMs }));
+        const buffer = await blob.arrayBuffer();
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(buffer);
+          const audioUrl = URL.createObjectURL(blob);
+          setMessages(current => [...current, { from: 'me', text: 'Voice note', kind: 'voice', mediaUrl: audioUrl, durationMs, time: 'Now' }]);
+        }
+      };
+      recorder.start();
+      recordingStartedAtRef.current = Date.now();
+      setIsRecording(true);
+      window.setTimeout(() => { if (recorder.state === 'recording') { recorder.stop(); setIsRecording(false); } }, 30_000);
+    } catch { setNotice('Microphone permission was denied or unavailable.'); setIsRecording(false); }
+  };
+
   const nextDemo = () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({ type: 'room.end' }));
     connectSocket(mode);
@@ -144,7 +225,7 @@ function App() {
     setNotice('');
   };
 
-  useEffect(() => () => { socketRef.current?.close(); }, []);
+  useEffect(() => () => { socketRef.current?.close(); recorderRef.current?.stop(); recordingStreamRef.current?.getTracks().forEach(track => track.stop()); }, []);
 
   return (
     <div className={`app-shell ${theme === "light" ? "theme-light" : ""}`} data-theme={theme}>
@@ -226,8 +307,8 @@ function App() {
         <div className="chat-layout">
           <aside className="chat-sidebar"><button className="back-link" onClick={leaveChat}><ChevronLeft size={16}/> Exit chat</button><div className="sidebar-label">YOUR SESSION</div><div className="session-card"><div className="session-avatar"><UserRound size={17}/></div><div><b>You are {nickname}</b><small>Guest session · Temporary</small></div></div><div className="sidebar-label">YOUR PREFERENCES</div><div className="preference-line"><Globe2 size={15}/>{language}</div><div className="preference-line"><Sparkles size={15}/>{mode === 'random' ? 'Random matching' : selected.slice(0, 3).join(', ')}</div><div className="privacy-note"><LockKeyhole size={16}/><span><b>Keep it personal, not identifiable.</b><small>Don't share passwords, addresses, or financial details.</small></span></div></aside>
           <section className="chat-panel"><div className="chat-header"><div className="stranger-avatar"><UserRound size={19}/></div><div className="stranger-info"><b>Someone new</b><small><span className="live-dot"/> {connectionState === "connected" ? "Connected" : connectionState === "waiting" ? "Finding a stranger" : "Connecting"}</small></div><div className="chat-actions"><button title="Report" onClick={() => setModal('report')}><Flag size={16}/></button><button title="Block" onClick={() => setModal('block')}><Ban size={16}/></button><button className="next-button" onClick={nextDemo}><Shuffle size={14}/> Next stranger</button></div></div>
-            <div className="message-area"><div className="chat-date">A NEW CONVERSATION</div><div className="conversation-hint">{chatStatus}</div>{messages.map((m, i) => <div key={i} className={m.from === 'me' ? 'message-row mine' : 'message-row'}><div className="message-avatar">{m.from === 'me' ? 'U' : '?'}</div><div className="message-content"><div className="message-meta">{m.from === 'me' ? 'You' : 'Someone new'} <span>{m.time}</span></div><div className="message-bubble">{m.text}</div></div></div>)}</div>
-            <div className="composer"><textarea value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder="Write something kind..." rows={1}/><span>{draft.length}/2000</span><button onClick={sendMessage} disabled={!draft.trim()} aria-label="Send message"><Send size={17}/></button></div><div className="chat-bottom-note"><LockKeyhole size={12}/> Never share sensitive personal information.</div>
+            <div className="message-area"><div className="chat-date">A NEW CONVERSATION</div><div className="conversation-hint">{chatStatus}</div>{messages.map((m, i) => <div key={i} className={m.from === 'me' ? 'message-row mine' : 'message-row'}><div className="message-avatar">{m.from === 'me' ? 'U' : '?'}</div><div className="message-content"><div className="message-meta">{m.from === 'me' ? 'You' : 'Someone new'} <span>{m.time}</span></div><div className="message-bubble">{m.kind === 'gif' && m.mediaUrl ? <img className="chat-gif" src={m.mediaUrl} alt={m.text} loading="lazy"/> : m.kind === 'voice' && m.mediaUrl ? <audio className="chat-audio" controls preload="metadata" src={m.mediaUrl}/> : m.text}</div></div></div>)}</div>
+            {showGifPicker && <div className="gif-picker"><div className="gif-search-row"><input value={gifQuery} maxLength={50} onChange={e => setGifQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') searchGifs(); }} placeholder="Search GIFs..."/><button onClick={searchGifs} disabled={gifLoading} aria-label="Search GIFs"><Search size={15}/></button><button onClick={() => setShowGifPicker(false)} aria-label="Close GIF picker"><X size={15}/></button></div>{gifError && <p className="gif-error">{gifError}</p>}<div className="gif-results">{gifResults.map(gif => <button key={gif.id} onClick={() => sendGif(gif)}><img src={gif.preview} alt={gif.title} loading="lazy"/></button>)}</div><div className="giphy-credit">Powered by GIPHY</div></div>}<div className="composer"><button className="media-tool" onClick={() => { setShowGifPicker(v => !v); setGifError(''); }} aria-label="Choose a GIF" title="Choose a GIF"><Image size={17}/></button><textarea value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder="Write something kind..." rows={1}/><span>{draft.length}/2000</span><button className="media-tool" onClick={toggleVoiceRecording} aria-label={isRecording ? 'Stop recording' : 'Record voice note'} title={isRecording ? 'Stop recording' : 'Record voice note'}>{isRecording ? <Square size={15}/> : <Mic size={17}/>}</button><button onClick={sendMessage} disabled={!draft.trim()} aria-label="Send message"><Send size={17}/></button></div><div className="chat-bottom-note"><LockKeyhole size={12}/> Voice notes are temporary. GIF search is powered by GIPHY.</div>
           </section>
         </div>
         {notice && <div className="toast">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
