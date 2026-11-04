@@ -102,3 +102,12 @@
   .conversation-hint{font-size:13px}
   .footer,.footer-links{font-size:11px}
 }
+
+/* Improve contrast of the central brand mark in light mode */
+.theme-light .center-core{
+  color:#35285f;
+  background:linear-gradient(145deg,#ffffff,#e8e2ff);
+  border-color:#9b87e8;
+  box-shadow:0 12px 50px rgba(74,54,145,.2);
+}
+.theme-light .center-core span{color:#7656e8}
