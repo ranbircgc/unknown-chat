@@ -102,3 +102,11 @@
   .conversation-hint{font-size:13px}
   .footer,.footer-links{font-size:11px}
 }
+
+/* High-contrast hero mark in light mode */
+.theme-light .center-core{
+  color:#35285f;
+  background:linear-gradient(145deg,#ffffff,#e8e2ff);
+  border-color:#b8a8ef;
+  box-shadow:0 12px 50px rgba(74,54,145,.16);
+}
