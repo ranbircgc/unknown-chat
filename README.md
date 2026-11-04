@@ -6,7 +6,17 @@ UNKNOWN is a website-only, anonymous stranger-chat prototype. It is being built 
 
 ## Current status
 
-The first frontend foundation includes:
+The repository contains an early real-time prototype with guest sessions, WebSocket matching, and text messaging. Recent hardening adds:
+- Per-IP session-creation throttling (5 attempts per 10-minute window; the IP is hashed before use as a Durable Object key)
+- Single active WebSocket per guest session
+- Per-socket message and typing-event throttles
+- Strict WebSocket Origin checks, bounded payloads, and safer API response headers
+- Language compatibility checks during matching
+- Static security headers, robots.txt, sitemap, canonical and social metadata
+
+These controls are a baseline, not a security certification or production abuse-prevention system. The 18+ checkbox remains self-attestation only. Reports and blocks are not yet connected to a staffed moderation workflow.
+
+The frontend foundation includes:
 - Responsive landing page and product positioning
 - Random and interest-based onboarding UI
 - Language preference and 18+ self-attestation UI

@@ -5,11 +5,18 @@ interface MatchAttachment {
   interests: string[];
   language: string;
   roomId: string | null;
+  rateWindowStartedAt?: number;
+  messageCount?: number;
+  typingCount?: number;
+}
+
+interface EventPayload {
+  type?: unknown;
+  text?: unknown;
 }
 
 export class MatchmakerDO {
   private readonly ctx: DurableObjectState;
-
   constructor(ctx: DurableObjectState) {
     this.ctx = ctx;
   }
@@ -23,16 +30,28 @@ export class MatchmakerDO {
     const nickname = request.headers.get("x-unknown-nickname");
     if (!sessionId || !nickname) return new Response("Unauthorized", { status: 401 });
 
-    let interests: string[] = [];
-    try { interests = JSON.parse(request.headers.get("x-unknown-interests") ?? "[]") as string[]; }
+    let interests: unknown;
+    try { interests = JSON.parse(request.headers.get("x-unknown-interests") ?? "[]"); }
     catch { return new Response("Invalid interests", { status: 400 }); }
+    if (!Array.isArray(interests) || interests.length > 5 || interests.some((item) => typeof item !== "string" || item.length > 40)) {
+      return new Response("Invalid interests", { status: 400 });
+    }
+
+    // A guest session may have only one active socket. A reconnect replaces the old socket.
+    for (const existing of this.ctx.getWebSockets()) {
+      const data = existing.deserializeAttachment() as MatchAttachment | null;
+      if (data?.sessionId === sessionId) {
+        existing.send(JSON.stringify({ type: "session.replaced", message: "This session connected elsewhere." }));
+        existing.close(4001, "Session reconnected");
+      }
+    }
 
     const mode = request.headers.get("x-unknown-mode") === "interests" ? "interests" : "random";
     const language = (request.headers.get("x-unknown-language") ?? "Any language").slice(0, 24);
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
-    const attachment: MatchAttachment = { sessionId, nickname, mode, interests: interests.slice(0, 5), language, roomId: null };
+    const attachment: MatchAttachment = { sessionId, nickname, mode, interests, language, roomId: null };
 
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment(attachment);
@@ -41,11 +60,16 @@ export class MatchmakerDO {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  private compatibleLanguage(a: string, b: string) {
+    return a.toLowerCase() === "any language" || b.toLowerCase() === "any language" || a.toLowerCase() === b.toLowerCase();
+  }
+
   private tryMatch(socket: WebSocket, current: MatchAttachment) {
     const waiting = this.ctx.getWebSockets().find((candidate) => {
       if (candidate === socket || candidate.readyState !== WebSocket.READY_STATE_OPEN) return false;
       const data = candidate.deserializeAttachment() as MatchAttachment | null;
       if (!data || data.roomId !== null || data.sessionId === current.sessionId) return false;
+      if (!this.compatibleLanguage(current.language, data.language)) return false;
       if (current.mode === "interests" || data.mode === "interests") {
         return current.interests.some((interest) => data.interests.includes(interest));
       }
@@ -65,15 +89,40 @@ export class MatchmakerDO {
     waiting.send(JSON.stringify({ type: "match.found", roomId, stranger: { nickname: current.nickname } }));
   }
 
+  private consume(socket: WebSocket, kind: "message" | "typing") {
+    const now = Date.now();
+    const attachment = socket.deserializeAttachment() as MatchAttachment | null;
+    if (!attachment) return false;
+    if (!attachment.rateWindowStartedAt || now - attachment.rateWindowStartedAt >= 10_000) {
+      attachment.rateWindowStartedAt = now;
+      attachment.messageCount = 0;
+      attachment.typingCount = 0;
+    }
+    const key = kind === "message" ? "messageCount" : "typingCount";
+    const limit = kind === "message" ? 8 : 20;
+    const count = attachment[key] ?? 0;
+    if (count >= limit) {
+      socket.serializeAttachment(attachment);
+      return false;
+    }
+    attachment[key] = count + 1;
+    socket.serializeAttachment(attachment);
+    return true;
+  }
+
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
     if (typeof message !== "string" || message.length > 5000) {
       socket.send(JSON.stringify({ type: "error", message: "Invalid message payload." }));
       return;
     }
 
-    let event: { type?: string; text?: string };
-    try { event = JSON.parse(message) as { type?: string; text?: string }; }
+    let event: EventPayload;
+    try { event = JSON.parse(message) as EventPayload; }
     catch { socket.send(JSON.stringify({ type: "error", message: "Invalid JSON." })); return; }
+    if (!event || typeof event !== "object" || typeof event.type !== "string") {
+      socket.send(JSON.stringify({ type: "error", message: "Invalid event." }));
+      return;
+    }
 
     const attachment = socket.deserializeAttachment() as MatchAttachment | null;
     if (!attachment) return;
@@ -84,7 +133,11 @@ export class MatchmakerDO {
     });
 
     if (event.type === "message.send") {
-      const text = (event.text ?? "").trim();
+      if (!this.consume(socket, "message")) {
+        socket.send(JSON.stringify({ type: "error", message: "You're sending messages too quickly. Please slow down." }));
+        return;
+      }
+      const text = typeof event.text === "string" ? event.text.trim() : "";
       if (!attachment.roomId || !peer) {
         socket.send(JSON.stringify({ type: "error", message: "You are not in an active chat." }));
         return;
@@ -98,6 +151,7 @@ export class MatchmakerDO {
     }
 
     if (event.type === "typing.start" || event.type === "typing.stop") {
+      if (!this.consume(socket, "typing")) return;
       if (peer) peer.send(JSON.stringify({ type: event.type }));
       return;
     }
