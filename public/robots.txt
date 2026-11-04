@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /chat
+Disallow: /setup
+
+Sitemap: https://unknown-chat-web.pages.dev/sitemap.xml
