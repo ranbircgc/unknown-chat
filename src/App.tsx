@@ -159,8 +159,8 @@ function App() {
           <div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/>
           <div className="hero-copy">
             <div className="eyebrow"><span className="live-dot"/> A DIFFERENT KIND OF CONNECTION</div>
-            <h1>Strangers today.<br/><span>Stories tomorrow.</span></h1>
-            <p className="hero-sub">A space to meet someone new, share a thought, or just talk. No profiles. No pressure. Just a conversation.</p>
+            <h1>Anonymous text chat.<br/><span>Meet someone new.</span></h1>
+            <p className="hero-sub">Start a one-to-one text conversation without creating a public profile. Choose a random match or find someone with a shared interest.</p>
             <div className="hero-actions">
               <button className="button-primary" onClick={() => startSetup('random')}>Meet a stranger <ArrowRight size={17}/></button>
               <button className="button-secondary" onClick={() => startSetup('interests')}><SlidersHorizontal size={16}/> Match by interests</button>
@@ -169,12 +169,12 @@ function App() {
           </div>
           <div className="hero-art" aria-label="Abstract conversation illustration">
             <div className="art-glow"/>
-            <div className="chat-orb orb-a"><span className="orb-avatar">?</span><div><b>Someone new</b><small>Somewhere in the world</small></div><span className="orb-status"/></div>
+            <div className="chat-orb orb-a"><span className="orb-avatar">?</span><div><b>Someone new</b><small>Guest conversation</small></div><span className="orb-status"/></div>
             <div className="chat-orb orb-b"><span className="bubble-icon"><MessageCircle size={19}/></span><div><b>A fresh perspective</b><small>One conversation at a time</small></div></div>
             <div className="art-center"><div className="center-ring"><div className="center-core">U<span>.</span></div></div><span className="center-caption">THE UNKNOWN CONNECTION</span></div>
             <div className="floating-note note-a">“Hey, how’s your day going?”</div>
             <div className="floating-note note-b"><Sparkles size={13}/> No introductions needed</div>
-            <div className="art-star star-a">✳</div><div className="art-star star-b">✦</div>
+            
           </div>
         </section>
 
@@ -189,9 +189,9 @@ function App() {
           </div>
         </section>
 
-        <section className="safety-section" id="safety"><div className="safety-visual"><div className="shield-back"><ShieldCheck size={66}/></div><div className="safety-chip chip-one"><LockKeyhole size={14}/> Private by design</div><div className="safety-chip chip-two"><Heart size={14}/> Respect is required</div></div><div className="safety-copy"><div className="eyebrow">A BETTER KIND OF ANONYMOUS</div><h2>Anonymous doesn't mean <span>anything goes.</span></h2><p>We want UNKNOWN to feel open, not unsafe. Clear community rules and visible safety tools are part of the experience—not an afterthought.</p><ul><li><Check size={16}/> 18+ community policy</li><li><Check size={16}/> Block and report controls</li><li><Check size={16}/> No public profiles or follower counts</li><li><Check size={16}/> Leave a conversation at any time</li></ul><a href="#about" className="text-link">Our approach to safety <ArrowUpRight size={15}/></a></div></section>
+        <section className="safety-section" id="safety"><div className="safety-visual"><div className="shield-back"><ShieldCheck size={66}/></div><div className="safety-chip chip-one"><LockKeyhole size={14}/> Private by design</div><div className="safety-chip chip-two"><Heart size={14}/> Respect is required</div></div><div className="safety-copy"><div className="eyebrow">A BETTER KIND OF ANONYMOUS</div><h2>Anonymous doesn't mean <span>anything goes.</span></h2><p>We want UNKNOWN to feel open, not unsafe. Clear community rules and visible safety tools are part of the experience—not an afterthought.</p><ul><li><Check size={16}/> 18+ community policy</li><li><Check size={16}/> Block and report controls</li><li><Check size={16}/> No public profiles or follower counts</li><li><Check size={16}/> Leave a conversation at any time</li></ul><a href="/terms.html" className="text-link">Read the community rules <ArrowUpRight size={15}/></a></div></section>
 
-        <section className="closing-cta" id="about"><div className="closing-spark">✳</div><div className="eyebrow">THE NEXT CONVERSATION IS OUT THERE</div><h2>Say hello to<br/><span>the unexpected.</span></h2><button className="button-primary" onClick={() => startSetup('random')}>Start a conversation <ArrowRight size={17}/></button><p>Talk freely. Stay unknown.</p></section>
+        <section className="closing-cta" id="about"><div className="eyebrow">START A CONVERSATION</div><h2>Choose a match.<br/><span>Start talking.</span></h2><button className="button-primary" onClick={() => startSetup('random')}>Start a conversation <ArrowRight size={17}/></button><p>Talk freely. Stay unknown.</p></section>
       </main>}
 
       {screen === 'setup' && <main className="flow-wrap">
@@ -225,7 +225,7 @@ function App() {
         {notice && <div className="toast">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
       </main>}
 
-      <footer className="footer"><div className="footer-brand"><img className="brand-logo footer-logo" src={theme === "light" ? "/unknown-logo-light.svg" : "/unknown-logo.svg"} alt="UNKNOWN — Talk freely. Stay unknown." /></div><span>Talk freely. Stay unknown.</span><div className="footer-links"><a href="#safety" onClick={e => { e.preventDefault(); navigateSection('safety'); }}>Safety</a><a href="#about" onClick={e => { e.preventDefault(); navigateSection('about'); }}>Guidelines</a><a href="mailto:hello@unknown.example">Contact</a></div><small>© 2026 UNKNOWN. Built for better conversations.</small></footer>
+      <footer className="footer"><div className="footer-brand"><img className="brand-logo footer-logo" src={theme === "light" ? "/unknown-logo-light.svg" : "/unknown-logo.svg"} alt="UNKNOWN — Talk freely. Stay unknown." /></div><span>Talk freely. Stay unknown.</span><div className="footer-links"><a href="#safety" onClick={e => { e.preventDefault(); navigateSection('safety'); }}>Safety</a><a href="#about" onClick={e => { e.preventDefault(); navigateSection('about'); }}>Guidelines</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div><small>© 2026 UNKNOWN. Built for better conversations.</small></footer>
 
       {modal && <div className="modal-backdrop" onClick={() => setModal(null)}><div className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)}><X size={18}/></button><div className="modal-icon">{modal === 'report' ? <Flag size={21}/> : <Ban size={21}/>}</div><h3>{modal === 'report' ? 'Report this conversation' : 'Block this person?'}</h3><p>{modal === 'report' ? 'Choose the main reason. We store the report reason and session references, not chat messages.' : 'This person will be blocked for the rest of your current guest session.'}</p>{modal === 'report' ? <select className="report-select" value={reportReason} onChange={e => setReportReason(e.target.value)}><option>Harassment or bullying</option><option>Threats or violence</option><option>Hate speech</option><option>Sexual harassment or exploitation</option><option>Scam or spam</option><option>Sharing private information</option><option>Other</option></select> : <div className="block-warning">You can leave without explaining why.</div>}<div className="modal-actions"><button className="button-secondary" onClick={() => setModal(null)}>Cancel</button><button className="button-primary" onClick={() => { if (socketRef.current?.readyState !== WebSocket.OPEN || connectionState !== 'connected') { setModal(null); setNotice('There is no active conversation.'); return; } socketRef.current.send(JSON.stringify(modal === 'report' ? { type: 'report.submit', reason: reportReason } : { type: 'block.add' })); setNotice(modal === 'report' ? 'Submitting report…' : 'Blocking this person…'); if (modal === 'block') setModal(null); }}>{modal === 'report' ? 'Submit report' : 'Block & leave'}</button></div></div></div>}
     </div>
