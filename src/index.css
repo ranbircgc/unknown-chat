@@ -12,3 +12,48 @@
 .brand-logo{display:block;width:184px;height:auto;}
 .footer-logo{width:148px;}
 @media(max-width:620px){.brand-logo{width:158px;}.footer-logo{width:132px;}}
+
+/* Prevent horizontal page drift/overflow on mobile browsers */
+html,body,#root{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:clip;
+}
+body{position:relative}
+.app-shell{
+  width:100%;
+  max-width:100vw;
+  min-width:0;
+  overflow-x:clip;
+}
+img,svg,video,canvas{max-width:100%}
+.topbar,.hero,.trust-strip,.section,.safety-section,.closing-cta,.footer,
+.flow-wrap,.chat-page,.chat-layout,.chat-sidebar,.chat-panel{
+  min-width:0;
+  max-width:100%;
+}
+.hero-art{min-width:0;max-width:100%;overflow:clip}
+.hero-copy,.hero-art,.feature-card,.safety-copy,.safety-visual{min-width:0}
+@media(max-width:620px){
+  .topbar{width:100%;padding-left:14px;padding-right:14px;gap:8px}
+  .brand-logo{width:clamp(132px,42vw,158px)}
+  .topbar-actions{flex-shrink:0}
+  .hero{width:100%;padding-left:16px;padding-right:16px;overflow:clip}
+  .hero-art{width:100%;margin-left:0;margin-right:0;transform:none}
+  .orb-a{right:0}
+  .orb-b{left:0}
+  .note-a{left:0}
+  .note-b{right:0}
+  .trust-strip{width:100%;flex-wrap:wrap}
+  .section,.safety-section,.closing-cta,.footer{width:100%;padding-left:16px;padding-right:16px}
+  .chat-page{width:100%;padding-left:8px;padding-right:8px}
+  .chat-layout{width:100%;grid-template-columns:minmax(0,1fr)}
+  .chat-panel,.chat-sidebar{width:100%;min-width:0}
+  .chat-header{min-width:0}
+  .stranger-info{min-width:0}
+  .composer{min-width:0}
+  .composer textarea{min-width:0;width:100%}
+  .message-row{min-width:0}
+  .message-content{min-width:0;max-width:100%}
+}
