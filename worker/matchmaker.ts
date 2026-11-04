@@ -116,6 +116,7 @@ export class MatchmakerDO {
       attachment.rateWindowStartedAt = now;
       attachment.messageCount = 0;
       attachment.typingCount = 0;
+      attachment.voiceCount = 0;
     }
     const key = kind === "message" ? "messageCount" : kind === "typing" ? "typingCount" : "voiceCount";
     const limit = kind === "message" ? 8 : kind === "typing" ? 20 : 2;
@@ -138,7 +139,8 @@ export class MatchmakerDO {
         const data = candidate.deserializeAttachment() as MatchAttachment | null;
         return Boolean(pending && pending.roomId === attachment?.roomId && data?.roomId === pending.roomId);
       });
-      if (!attachment || !pending || !peer || (!(message instanceof ArrayBuffer) && !(message instanceof Blob)) || message.byteLength < 1 || message.byteLength > 1_500_000 || Date.now() - pending.createdAt > 10_000) {
+      const byteLength = message instanceof Blob ? message.size : message.byteLength;
+      if (!attachment || !pending || !peer || (!(message instanceof ArrayBuffer) && !(message instanceof Blob)) || byteLength < 1 || byteLength > 1_500_000 || Date.now() - pending.createdAt > 10_000) {
         if (attachment) socket.serializeAttachment({ ...attachment, pendingVoice: null });
         socket.send(JSON.stringify({ type: "error", message: "Voice note was invalid or expired." }));
         return;
