@@ -1,0 +1,21 @@
+name = "unknown-chat-api"
+main = "worker/index.ts"
+compatibility_date = "2026-11-04"
+
+[vars]
+# Set APP_ORIGIN to your exact deployed website origin before deployment.
+# APP_ORIGIN = "https://your-site.pages.dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "unknown-chat-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[durable_objects.bindings]]
+name = "MATCHMAKER"
+class_name = "MatchmakerDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MatchmakerDO"]
