@@ -129,7 +129,7 @@ export class MatchmakerDO {
     return true;
   }
 
-  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer | Blob) {
     if (typeof message !== "string") {
       const attachment = socket.deserializeAttachment() as MatchAttachment | null;
       const pending = attachment?.pendingVoice;
@@ -138,7 +138,7 @@ export class MatchmakerDO {
         const data = candidate.deserializeAttachment() as MatchAttachment | null;
         return Boolean(pending && pending.roomId === attachment?.roomId && data?.roomId === pending.roomId);
       });
-      if (!attachment || !pending || !peer || !(message instanceof ArrayBuffer) || message.byteLength < 1 || message.byteLength > 1_500_000 || Date.now() - pending.createdAt > 10_000) {
+      if (!attachment || !pending || !peer || (!(message instanceof ArrayBuffer) && !(message instanceof Blob)) || message.byteLength < 1 || message.byteLength > 1_500_000 || Date.now() - pending.createdAt > 10_000) {
         if (attachment) socket.serializeAttachment({ ...attachment, pendingVoice: null });
         socket.send(JSON.stringify({ type: "error", message: "Voice note was invalid or expired." }));
         return;
