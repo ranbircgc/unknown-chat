@@ -8,17 +8,27 @@ interface MatchAttachment {
   rateWindowStartedAt?: number;
   messageCount?: number;
   typingCount?: number;
+  reportedRoomId?: string | null;
 }
 
 interface EventPayload {
   type?: unknown;
   text?: unknown;
+  reason?: unknown;
 }
+
+interface Env {
+  DB: D1Database;
+}
+
+const REPORT_REASONS = new Set(["Harassment or bullying", "Threats or violence", "Hate speech", "Sexual harassment or exploitation", "Scam or spam", "Sharing private information", "Other"]);
 
 export class MatchmakerDO {
   private readonly ctx: DurableObjectState;
-  constructor(ctx: DurableObjectState) {
+  private readonly env: Env;
+  constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
+    this.env = env;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -55,7 +65,7 @@ export class MatchmakerDO {
 
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment(attachment);
-    this.tryMatch(server, attachment);
+    await this.tryMatch(server, attachment);
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -64,29 +74,32 @@ export class MatchmakerDO {
     return a.toLowerCase() === "any language" || b.toLowerCase() === "any language" || a.toLowerCase() === b.toLowerCase();
   }
 
-  private tryMatch(socket: WebSocket, current: MatchAttachment) {
-    const waiting = this.ctx.getWebSockets().find((candidate) => {
-      if (candidate === socket || candidate.readyState !== WebSocket.READY_STATE_OPEN) return false;
-      const data = candidate.deserializeAttachment() as MatchAttachment | null;
-      if (!data || data.roomId !== null || data.sessionId === current.sessionId) return false;
-      if (!this.compatibleLanguage(current.language, data.language)) return false;
-      if (current.mode === "interests" || data.mode === "interests") {
-        return current.interests.some((interest) => data.interests.includes(interest));
-      }
-      return true;
-    });
+  private async isBlocked(first: string, second: string) {
+    const row = await this.env.DB.prepare(
+      "SELECT 1 AS blocked FROM user_blocks WHERE (blocker_session_id = ? AND blocked_session_id = ?) OR (blocker_session_id = ? AND blocked_session_id = ?) LIMIT 1",
+    ).bind(first, second, second, first).first<{ blocked: number }>();
+    return Boolean(row);
+  }
 
-    if (!waiting) {
-      socket.send(JSON.stringify({ type: "queue.waiting", message: "Looking for someone to talk to…" }));
+  private async tryMatch(socket: WebSocket, current: MatchAttachment) {
+    for (const candidate of this.ctx.getWebSockets()) {
+      if (candidate === socket || candidate.readyState !== WebSocket.READY_STATE_OPEN) continue;
+      const data = candidate.deserializeAttachment() as MatchAttachment | null;
+      if (!data || data.roomId !== null || data.sessionId === current.sessionId) continue;
+      if (!this.compatibleLanguage(current.language, data.language)) continue;
+      if ((current.mode === "interests" || data.mode === "interests") &&
+          !current.interests.some((interest) => data.interests.includes(interest))) continue;
+      if (await this.isBlocked(current.sessionId, data.sessionId)) continue;
+
+      const roomId = crypto.randomUUID();
+      socket.serializeAttachment({ ...current, roomId });
+      candidate.serializeAttachment({ ...data, roomId });
+      socket.send(JSON.stringify({ type: "match.found", roomId, stranger: { nickname: data.nickname } }));
+      candidate.send(JSON.stringify({ type: "match.found", roomId, stranger: { nickname: current.nickname } }));
       return;
     }
 
-    const other = waiting.deserializeAttachment() as MatchAttachment;
-    const roomId = crypto.randomUUID();
-    socket.serializeAttachment({ ...current, roomId });
-    waiting.serializeAttachment({ ...other, roomId });
-    socket.send(JSON.stringify({ type: "match.found", roomId, stranger: { nickname: other.nickname } }));
-    waiting.send(JSON.stringify({ type: "match.found", roomId, stranger: { nickname: current.nickname } }));
+    socket.send(JSON.stringify({ type: "queue.waiting", message: "Looking for someone to talk to…" }));
   }
 
   private consume(socket: WebSocket, kind: "message" | "typing") {
@@ -156,13 +169,53 @@ export class MatchmakerDO {
       return;
     }
 
+    if (event.type === "report.submit") {
+      const reason = typeof event.reason === "string" ? event.reason : "";
+      if (!attachment.roomId || !peer) {
+        socket.send(JSON.stringify({ type: "error", message: "There is no active conversation to report." }));
+        return;
+      }
+      if (!REPORT_REASONS.has(reason)) {
+        socket.send(JSON.stringify({ type: "error", message: "Choose a valid report reason." }));
+        return;
+      }
+      if (attachment.reportedRoomId === attachment.roomId) {
+        socket.send(JSON.stringify({ type: "error", message: "You have already reported this conversation." }));
+        return;
+      }
+      await this.env.DB.prepare(
+        "INSERT INTO conversation_reports (id, reporter_session_id, reported_session_id, reason, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
+      ).bind(crypto.randomUUID(), attachment.sessionId, (peer.deserializeAttachment() as MatchAttachment).sessionId, reason, Math.floor(Date.now() / 1000)).run();
+      socket.serializeAttachment({ ...attachment, reportedRoomId: attachment.roomId });
+      socket.send(JSON.stringify({ type: "report.received", message: "Report recorded. If you feel unsafe, leave the conversation." }));
+      return;
+    }
+
+    if (event.type === "block.add") {
+      if (!attachment.roomId || !peer) {
+        socket.send(JSON.stringify({ type: "error", message: "There is no active person to block." }));
+        return;
+      }
+      const peerData = peer.deserializeAttachment() as MatchAttachment;
+      await this.env.DB.prepare(
+        "INSERT OR IGNORE INTO user_blocks (blocker_session_id, blocked_session_id, created_at) VALUES (?, ?, ?)",
+      ).bind(attachment.sessionId, peerData.sessionId, Math.floor(Date.now() / 1000)).run();
+      peer.send(JSON.stringify({ type: "room.closed", reason: "The other person left the conversation." }));
+      const waitingPeer = { ...peerData, roomId: null };
+      peer.serializeAttachment(waitingPeer);
+      await this.tryMatch(peer, waitingPeer);
+      socket.serializeAttachment({ ...attachment, roomId: null });
+      socket.send(JSON.stringify({ type: "block.saved", message: "This person is blocked for future matching." }));
+      return;
+    }
+
     if (event.type === "room.end") {
       if (peer) {
         peer.send(JSON.stringify({ type: "room.closed", reason: "The other person left." }));
         const peerData = peer.deserializeAttachment() as MatchAttachment;
         const waitingPeer = { ...peerData, roomId: null };
         peer.serializeAttachment(waitingPeer);
-        this.tryMatch(peer, waitingPeer);
+        await this.tryMatch(peer, waitingPeer);
       }
       socket.serializeAttachment({ ...attachment, roomId: null });
       socket.send(JSON.stringify({ type: "room.closed", reason: "You left the conversation." }));
@@ -173,14 +226,14 @@ export class MatchmakerDO {
   }
 
   async webSocketClose(socket: WebSocket) {
-    this.closePeerRoom(socket);
+    await this.closePeerRoom(socket);
   }
 
   async webSocketError(socket: WebSocket) {
     this.closePeerRoom(socket);
   }
 
-  private closePeerRoom(socket: WebSocket) {
+  private async closePeerRoom(socket: WebSocket) {
     const attachment = socket.deserializeAttachment() as MatchAttachment | null;
     if (!attachment?.roomId) return;
     const peer = this.ctx.getWebSockets().find((candidate) => {
@@ -193,7 +246,7 @@ export class MatchmakerDO {
       const data = peer.deserializeAttachment() as MatchAttachment;
       const waitingPeer = { ...data, roomId: null };
       peer.serializeAttachment(waitingPeer);
-      this.tryMatch(peer, waitingPeer);
+      await this.tryMatch(peer, waitingPeer);
     }
   }
 }
