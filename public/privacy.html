@@ -23,7 +23,8 @@
   <ul>
     <li><strong>Guest session:</strong> A random session identifier, generated nickname, session status, creation and expiry timestamps, and the fact that you checked the 18+ confirmation. The session cookie contains a random token; the database stores its hash rather than the raw token.</li>
     <li><strong>Conversation preferences:</strong> Matching mode, selected interests and language are sent to the matching service while you seek a conversation.</li>
-    <li><strong>Messages:</strong> Text is relayed between the two connected guests. The current chat implementation does not save message transcripts to the application database. Messages may exist temporarily in service memory while being delivered.</li>
+    <li><strong>Messages and voice notes:</strong> Text and short voice-note audio are relayed between the two connected guests. The application does not save message transcripts or audio files to its database or object storage. Voice audio is forwarded through the active real-time connection and may be held temporarily in service memory and the recipient browser while being delivered or played.</li>
+    <li><strong>GIF search and sharing:</strong> When GIF search is configured and used, the search query is sent directly from your browser to GIPHY. GIPHY may receive your IP address and request/device data under its own privacy terms. Selected GIFs are loaded by both guests from GIPHY's media CDN; UNKNOWN stores neither the GIF file nor a copy of it.</li>
     <li><strong>Reports:</strong> If you report a conversation, the service stores the report reason, temporary session references, status and timestamps. It does not attach the chat transcript.</li>
     <li><strong>Blocks:</strong> If you block someone, temporary session references and timestamps are stored to prevent those two guest sessions from being matched again during the block period.</li>
     <li><strong>Security and operations:</strong> The hosting and network provider may process connection data such as IP address, request metadata and diagnostic logs. The application hashes the connecting IP before using it as a session-creation rate-limit key.</li>
@@ -33,7 +34,7 @@
   <h2>4. Why information is used</h2>
   <ul>
     <li>To create temporary guest sessions and connect compatible guests.</li>
-    <li>To deliver messages and operate chat controls.</li>
+    <li>To deliver text, temporary voice notes, GIF references and operate chat controls.</li>
     <li>To receive reports, apply session-level blocks and maintain moderation records.</li>
     <li>To limit automated or abusive session creation and protect service availability.</li>
     <li>To maintain, secure and troubleshoot the service.</li>
@@ -41,7 +42,7 @@
   <h2>5. Retention</h2>
   <p>Guest sessions are configured for a four-hour lifetime. Report records are configured to expire after 90 days. Session-level block records are configured to expire after 180 days. A daily scheduled cleanup removes expired reports, blocks and expired or revoked guest sessions. Moderation audit records currently have no automatic expiry configured. Infrastructure-provider logs may follow that provider's separate retention schedule. These periods may change if the service is updated; this policy must be reviewed whenever data handling changes.</p>
   <h2>6. Service providers and transfers</h2>
-  <p>UNKNOWN currently uses Cloudflare services for hosting, application execution, database storage and real-time connections. Those providers process information as needed to deliver and secure the service, under their own terms and privacy documentation. Infrastructure may process data outside your state or country. The operator must verify applicable contractual, transfer and disclosure requirements before launch.</p>
+  <p>UNKNOWN currently uses Cloudflare services for hosting, application execution, database storage and real-time connections. Those providers process information as needed to deliver and secure the service, under their own terms and privacy documentation. If GIF search is enabled, GIPHY receives search requests directly from your browser and serves selected media from its CDN. Review GIPHY's privacy and API terms before enabling this feature. Infrastructure may process data outside your state or country. The operator must verify applicable contractual, transfer and disclosure requirements before launch.</p>
   <h2>7. Safety and age</h2>
   <p>UNKNOWN is intended for adults aged 18 and over. The current age gate is a self-attestation checkbox, not identity or age verification. Do not treat it as proof of age. Do not share passwords, financial details, addresses or other identifying information in a conversation. Reports are not guaranteed to be reviewed until a trained moderation team and response process are operating.</p>
   <h2>8. Your choices and requests</h2>
