@@ -20,6 +20,7 @@ function App() {
   const [nickname, setNickname] = useState('Unknown');
   const socketRef = useRef<WebSocket | null>(null);
   const pendingVoiceRef = useRef<{ mimeType: string; durationMs: number } | null>(null);
+  const outgoingVoiceRef = useRef<{ blob: Blob; mimeType: string; durationMs: number } | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingStreamRef = useRef<MediaStream | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
@@ -54,6 +55,7 @@ function App() {
   const connectSocket = (activeMode: Mode) => {
     socketRef.current?.close();
     pendingVoiceRef.current = null;
+    outgoingVoiceRef.current = null;
     setConnectionState('connecting');
     setMessages([]);
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -73,7 +75,21 @@ function App() {
       }
       let data: ServerEvent;
       try { data = JSON.parse(String(event.data)) as ServerEvent; } catch { return; }
-      if (data.type === 'voice.new') {
+      if (data.type === 'voice.ready') {
+        const outgoing = outgoingVoiceRef.current;
+        const activeSocket = socketRef.current;
+        outgoingVoiceRef.current = null;
+        if (!outgoing || !activeSocket || activeSocket.readyState !== WebSocket.OPEN) return;
+        void outgoing.blob.arrayBuffer().then(buffer => {
+          if (activeSocket.readyState !== WebSocket.OPEN) {
+            setNotice('Chat ended before the voice note could be sent.');
+            return;
+          }
+          activeSocket.send(buffer);
+          const audioUrl = URL.createObjectURL(outgoing.blob);
+          setMessages(current => [...current, { from: 'me', text: 'Voice note', kind: 'voice', mediaUrl: audioUrl, durationMs: outgoing.durationMs, time: 'Now' }]);
+        }).catch(() => setNotice('Could not prepare the voice note. Please record it again.'));
+      } else if (data.type === 'voice.new') {
         pendingVoiceRef.current = { mimeType: (data as ServerEvent & { mimeType?: string }).mimeType || 'audio/webm', durationMs: (data as ServerEvent & { durationMs?: number }).durationMs || 0 };
       } else if (data.type === 'gif.new') {
         const media = data as ServerEvent & { url?: string; alt?: string };
@@ -108,6 +124,7 @@ function App() {
         setDraft('');
         setNotice('Finding your next stranger…');
       } else if (data.type === 'error') {
+        if (outgoingVoiceRef.current) outgoingVoiceRef.current = null;
         setNotice(data.message || 'Something went wrong.');
       }
     };
@@ -232,13 +249,14 @@ function App() {
         const socket = socketRef.current;
         if (!socket || socket.readyState !== WebSocket.OPEN || connectionState !== 'connected') { setNotice('Chat ended before the voice note could be sent.'); return; }
         const durationMs = Math.min(30_000, Math.max(500, Date.now() - recordingStartedAtRef.current));
+        outgoingVoiceRef.current = { blob, mimeType, durationMs };
         socket.send(JSON.stringify({ type: 'voice.begin', mimeType, durationMs }));
-        const buffer = await blob.arrayBuffer();
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(buffer);
-          const audioUrl = URL.createObjectURL(blob);
-          setMessages(current => [...current, { from: 'me', text: 'Voice note', kind: 'voice', mediaUrl: audioUrl, durationMs, time: 'Now' }]);
-        }
+        window.setTimeout(() => {
+          if (outgoingVoiceRef.current?.blob === blob) {
+            outgoingVoiceRef.current = null;
+            setNotice('The server did not accept the voice note. Please reconnect and try again.');
+          }
+        }, 10_000);
       };
       recorder.start();
       recordingStartedAtRef.current = Date.now();
