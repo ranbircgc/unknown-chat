@@ -1,0 +1,28 @@
+name: Production end-to-end smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Website URL to test'
+        required: false
+        default: 'https://unknown-chat-web.pages.dev'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - name: Test deployed website
+        run: npm run test:e2e
+        env:
+          E2E_BASE_URL: ${{ inputs.base_url }}
