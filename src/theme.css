@@ -1,0 +1,70 @@
+
+/* Readability and light theme additions */
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.theme-toggle{display:inline-flex;align-items:center;gap:7px;padding:10px 12px;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(255,255,255,.035);color:#e9e6f2;font-size:13px;font-weight:600}
+.theme-toggle:hover{background:rgba(255,255,255,.09)}
+.message-bubble{font-size:15px;line-height:1.7}
+.message-meta{font-size:11px}
+.conversation-hint{font-size:12px}
+.composer textarea{font-size:15px}
+.demo-banner{font-size:13px}
+.chat-header .stranger-info b,.session-card b{font-size:14px}
+.chat-header .stranger-info small,.session-card small{font-size:11px}
+.chat-actions>button:not(.next-button){width:38px;height:38px}
+.next-button{font-size:12px}
+.composer button{width:40px;height:40px}
+.nav-links{font-size:14px}
+.hero-sub{font-size:16px}
+.feature-card p,.section-heading p,.safety-copy>p{font-size:14px}
+.mode-option b{font-size:15px}
+.mode-option small,.interest,.select-label,.age-check{font-size:12px}
+.inline-notice{font-size:13px}
+@media(max-width:620px){.topbar-actions{gap:6px}.theme-toggle{padding:9px;font-size:0}.theme-toggle svg{width:17px;height:17px}.message-bubble{font-size:15px}.composer textarea{font-size:15px}}
+.app-shell.theme-light{background:#f5f6fb;color:#202033}
+.theme-light .topbar{border-color:#e3e4ed}
+.theme-light .brand{color:#202033}
+.theme-light .nav-links{color:#55566b}
+.theme-light .nav-links a:hover{color:#171725}
+.theme-light .nav-cta,.theme-light .button-secondary{background:#fff;color:#34334a;border-color:#d9d9e6}
+.theme-light .theme-toggle{background:#fff;color:#33334a;border-color:#d9d9e6}
+.theme-light .hero-sub,.theme-light .section-heading p,.theme-light .safety-copy>p{color:#5e6074}
+.theme-light .hero-foot,.theme-light .closing-cta p{color:#626377}
+.theme-light .trust-strip{border-color:#e0e1eb;color:#55566b}
+.theme-light .feature-card,.theme-light .flow-card,.theme-light .chat-sidebar,.theme-light .chat-panel{background:#fff;border-color:#e0e1eb}
+.theme-light .feature-card p,.theme-light .feature-number,.theme-light .sidebar-label,.theme-light .chat-date,.theme-light .conversation-hint{color:#66677a}
+.theme-light .safety-visual{background:#eef0fa;border-color:#e0e1eb}
+.theme-light .safety-chip,.theme-light .privacy-note{background:#f1effb;border-color:#dfdaf5;color:#49445f}
+.theme-light .safety-chip{color:#49445f}
+.theme-light .safety-copy ul{color:#45465b}
+.theme-light .footer{border-color:#e0e1eb;color:#66677a}
+.theme-light .footer-brand{color:#25253a}
+.theme-light .footer-links{color:#55566b}
+.theme-light .back-link{color:#55566b}
+.theme-light .flow-intro,.theme-light .picker-heading small,.theme-light .mode-option small,.theme-light .fine-print{color:#68697b}
+.theme-light .mode-option,.theme-light .interest{background:#f7f7fc;color:#37374d;border-color:#dedfeb}
+.theme-light .interest.selected{background:#eee9ff;color:#503c9a;border-color:#b8a9ef}
+.theme-light .select-label{color:#45465b}
+.theme-light .select-label select,.theme-light .report-select{background:#fff;color:#29293e;border-color:#d8d9e6}
+.theme-light .age-check{color:#4e4f63}
+.theme-light .chat-header{border-color:#e6e6ef}
+.theme-light .stranger-info small,.theme-light .session-card small{color:#66677a}
+.theme-light .stranger-avatar,.theme-light .session-avatar,.theme-light .message-avatar{background:#eeebfa;color:#5b4a9a;border-color:#ded8f4}
+.theme-light .message-bubble{background:#f0f1f7;color:#292a40;border-color:#e1e2ec}
+.theme-light .mine .message-bubble{background:#e9e2ff;color:#33265f;border-color:#d7cafb}
+.theme-light .message-meta{color:#44455b}
+.theme-light .message-meta span{color:#77788b}
+.theme-light .composer{background:#fff;border-color:#d9dae6}
+.theme-light .composer textarea{color:#25253a}
+.theme-light .composer textarea::placeholder{color:#85869a}
+.theme-light .composer>span,.theme-light .chat-bottom-note{color:#77788b}
+.theme-light .toast{background:#fff;color:#29293e;border-color:#d9d5ed;box-shadow:0 12px 40px rgba(30,25,60,.15)}
+.theme-light .toast button{color:#5b5b70}
+.theme-light .modal{background:#fff;color:#26263b;border-color:#ddddea}
+.theme-light .modal p{color:#5f6074}
+.theme-light .modal .button-secondary{background:#f5f5fa}
+.theme-light .block-warning{background:#f1f1f7;color:#55566b}
+.theme-light .chat-bottom-note{color:#66677a}
+.theme-light .chat-orb{background:rgba(255,255,255,.94);color:#29293e;border-color:#e0deeb}
+.theme-light .floating-note{background:#fff;color:#45445b;border-color:#e0deeb}
+.theme-light .closing-cta{border-color:#e2e2ec}
+.theme-light .app-shell{background:#f5f6fb}

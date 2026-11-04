@@ -106,7 +106,9 @@ export class MatchmakerDO {
       if (peer) {
         peer.send(JSON.stringify({ type: "room.closed", reason: "The other person left." }));
         const peerData = peer.deserializeAttachment() as MatchAttachment;
-        peer.serializeAttachment({ ...peerData, roomId: null });
+        const waitingPeer = { ...peerData, roomId: null };
+        peer.serializeAttachment(waitingPeer);
+        this.tryMatch(peer, waitingPeer);
       }
       socket.serializeAttachment({ ...attachment, roomId: null });
       socket.send(JSON.stringify({ type: "room.closed", reason: "You left the conversation." }));
@@ -135,7 +137,9 @@ export class MatchmakerDO {
     if (peer) {
       peer.send(JSON.stringify({ type: "room.closed", reason: "The other person disconnected." }));
       const data = peer.deserializeAttachment() as MatchAttachment;
-      peer.serializeAttachment({ ...data, roomId: null });
+      const waitingPeer = { ...data, roomId: null };
+      peer.serializeAttachment(waitingPeer);
+      this.tryMatch(peer, waitingPeer);
     }
   }
 }
