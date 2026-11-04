@@ -202,9 +202,11 @@ export class MatchmakerDO {
       ).bind(attachment.sessionId, peerData.sessionId, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000) + 180 * 24 * 60 * 60).run();
       peer.send(JSON.stringify({ type: "room.closed", reason: "The other person left the conversation." }));
       const waitingPeer = { ...peerData, roomId: null };
+      const waitingBlocker = { ...attachment, roomId: null };
       peer.serializeAttachment(waitingPeer);
+      socket.serializeAttachment(waitingBlocker);
       await this.tryMatch(peer, waitingPeer);
-      socket.serializeAttachment({ ...attachment, roomId: null });
+      await this.tryMatch(socket, waitingBlocker);
       socket.send(JSON.stringify({ type: "block.saved", message: "This person is blocked for this guest session." }));
       return;
     }
